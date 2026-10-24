@@ -2,7 +2,7 @@
 
 ## Status
 
-Design proposal for user review. This document authorizes no implementation by itself.
+Approved direction; the implementation plan is being prepared.
 
 ## Intent and constraints
 
@@ -93,7 +93,7 @@ Reuse shadcn/Radix controls and lucide-react icons. Do not add a large form or s
 
 ## Data and compatibility
 
-Increment the project backup schema from version 1 to version 2 only for the typed link representation. Add a pure migration from version 1 that preserves all existing profile, section, entry, override, variant, photo, and design values. Theme and sidebar preferences are UI preferences and remain outside resume variants in localStorage. The current page/design settings remain variant-scoped.
+Increment the project backup schema from version 1 to version 2 for typed links and richer variant design settings. Add a pure migration from version 1 that preserves all existing profile, section, entry, override, variant, photo, and design values. Map the old uniform `marginMm` to all four new margins, retain `fontSize`, `fontFamily`, `lineSpacing`, `bulletSpacing`, colors, date alignment, visibility flags, page policy, and give new controls safe template-specific defaults. Theme and sidebar preferences are UI preferences and remain outside resume variants in localStorage. Design settings remain variant-scoped.
 
 ## Acceptance criteria
 
