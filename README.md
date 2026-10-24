@@ -1,19 +1,55 @@
-# Resume Studio — Codex handoff pack
+# Resume Studio
 
-This pack gives Codex persistent project rules, an implementation roadmap, and a starter prompt.
+Resume Studio is a local-first resume/CV editor for Windows. It edits structured content, stores it in this browser, and compiles real PDFs with the local TeX Live `pdflatex` executable.
 
-## Files
+## Run locally
 
-- `AGENTS.md` — product constraints, implementation conventions, local `pdflatex` requirements, safety, and QA rules. Copy this to the project root.
-- `ROADMAP.md` — phased plan, architecture, five templates, data model, and acceptance criteria. Copy this to the project root.
-- `CODEX_START_PROMPT.md` — paste this into the initial Codex task, and attach your two reference PDFs to that Codex conversation.
+Prerequisites: Node.js 20.9 or newer, npm, and TeX Live with `pdflatex` on `PATH`.
 
-## How to use
+```powershell
+npm install
+npm run dev
+```
 
-1. Create/open the repository you want Codex to build in.
-2. Copy `AGENTS.md` and `ROADMAP.md` into the repository root.
-3. Attach both reference PDFs in the Codex conversation: your one-page FlowCV-style resume and your longer CV.
-4. Paste the contents of `CODEX_START_PROMPT.md` as the first instruction.
-5. Verify that local TeX Live `pdflatex` is on PATH. If needed, set `PDFLATEX_PATH` to the executable path on your own machine; do not commit a machine-specific absolute path.
+The development server binds to `127.0.0.1`. Open the local address printed by Next.js.
 
-The instructions explicitly require local `pdflatex` compilation and prohibit remote rendering services.
+The production build uses Next.js 16's Webpack fallback because Turbopack's PostCSS worker could not start reliably in the restricted build environment. Development keeps Next.js 16's default Turbopack mode.
+
+If `pdflatex` is not on `PATH`, set the executable for the current PowerShell session:
+
+```powershell
+$env:PDFLATEX_PATH = 'C:\path\to\TeX Live\bin\windows\pdflatex.exe'
+npm run dev
+```
+
+Resume Studio does not switch PDF engines. It reports a clear error if the configured executable cannot be started.
+
+## Data and backups
+
+- Resume content and optional portraits are saved in IndexedDB in the current browser profile.
+- Use **Export backup** to download a versioned JSON project containing the master profile/content library, variants, template settings, and photo data. Import validates the file and asks before replacing the current local project.
+- PDF preview and PDF download use the same compiled local PDF. Preview generation is explicit, so typing does not start a compile for every keystroke.
+- The first run loads synthetic sample content. Replace it with your own details. Personal data stays out of source fixtures.
+
+## Rendering and templates
+
+The app has five template options: Simple ATS, Clean Compact, Modern Developer, Academic CV, and Profile CV. They share structured content and common escaping/link helpers. T1 follows the rendered developer reference's centered header, thin section rules, bold entry hierarchy, right-aligned dates, and compact single-column spacing. See [reference design notes](docs/reference-design-notes.md).
+
+The local Node route writes application-generated TeX into a unique temporary directory and invokes `pdflatex` with `shell-escape` disabled. It validates the output file, page count, and selectable text, then cleans up the temporary files. Only generated templates are compiled; arbitrary uploaded TeX is not accepted. Unsupported characters report their code point so the user can replace them. The template font uses TeX Live's Latin Modern fonts.
+
+Overflow is reported from the compiled PDF page count. The editor never removes or truncates content to satisfy a page limit.
+
+## Development commands
+
+```powershell
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The tests compile synthetic fixture content through all five templates using local `pdflatex`, verify selectable text, exercise a photo, escaping, variants, and over-limit content.
+
+## Add a template
+
+Add the template ID and UI label in `src/app/studio.tsx`, then implement its layout variation in `src/lib/latex.ts`. Keep all wording in structured fields; never put personal resume text in the template source. Extend the renderer tests and render a fixture PDF with local TeX Live before considering the template complete.

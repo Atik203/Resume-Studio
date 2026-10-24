@@ -253,3 +253,20 @@ At the end of every implementation phase, report:
 3. Commands and tests actually run.
 4. Test/build outcomes.
 5. Known limitations and the next phase.
+
+## 11. Progress checklist
+
+- [x] Inspect instructions, repository, toolchain, reference files, and local `pdflatex` availability.
+- [x] Render and visually inspect all three reference pages; write `docs/reference-design-notes.md`.
+- [x] Implement validated project schema, IndexedDB autosave, independent variants, and versioned JSON backup/import.
+- [x] Implement T1 and the guarded local `pdflatex` route; compile and visually inspect a synthetic PDF against the reference.
+- [x] Implement the editor, templates T2–T5, actual PDF preview/download, overflow reporting, photo option, and project backup/import.
+- [x] Run automated checks and production build; record actual results below.
+
+### Delivery status
+
+- Implemented with Next.js 16 App Router, TypeScript, Tailwind CSS v4, and shadcn/ui primitives. The checked-in build command uses Next's supported Webpack mode because the sandbox's Turbopack PostCSS worker could not start; development keeps the default Turbopack mode.
+- Local Windows TeX Live `pdflatex` was found and used. The route runs in the Node.js runtime, resolves `PDFLATEX_PATH` or `PATH`, uses fixed arguments with `shell: false`, disables shell escape, bounds execution/logs, validates text and page count, and cleans per-request temporary files.
+- The editor includes a synthetic starter library, master content plus variant overrides, section/entry visibility and ordering, editing and duplication, style/page controls, optional photo, IndexedDB save status, validated JSON backup/import, and compiled preview/export.
+- Verification run on 2026-10-25: `npm test` (11 passed; includes real local `pdflatex` compilation of all five templates, selectable-text/link checks, overflow preservation, route behavior, and missing-executable behavior), `npm run typecheck`, `npm run lint`, and `npm run build` (passed). The latest T1 synthetic PDF was rendered and visually inspected.
+- Remaining QA: browser-driven edit → reload → restore workflow was not automated in this restricted environment; photo coverage checks the profile-photo template compile path, while broad image-format/oversize UI interactions still need manual browser QA. Backup format is a versioned JSON file with photo data embedded, not ZIP. `pdflatex` availability and supported glyphs depend on the local TeX Live installation.

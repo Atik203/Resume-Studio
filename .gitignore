@@ -1,1 +1,10 @@
-/.tmp
+node_modules/
+.next/
+.tmp/
+out/
+build/
+*.log
+*.tsbuildinfo
+.env*
+!.env.example
+output/pdf/*.pdf
