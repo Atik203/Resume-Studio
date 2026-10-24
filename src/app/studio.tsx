@@ -1,9 +1,11 @@
 'use client';
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ContentEntry, ProjectData, ResumeVariant, TemplateId, validateProject } from '@/lib/data';
 import { fixtureProject } from '@/lib/fixture';
 import { loadProject, saveProject } from '@/lib/storage';
+import { parseCompileResponseMetadata } from '@/lib/compile-response';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +19,11 @@ const templates: { id: TemplateId; name: string }[] = [
   { id: 't01-simple-ats', name: 'Simple ATS' }, { id: 't02-clean-compact', name: 'Clean Compact' },
   { id: 't03-modern-developer', name: 'Modern Developer' }, { id: 't04-academic-cv', name: 'Academic CV' }, { id: 't05-profile-cv', name: 'Profile CV' },
 ];
+
+const CompiledPdfViewer = dynamic(() => import('@/components/pdf/compiled-pdf-viewer'), {
+  ssr: false,
+  loading: () => <div className="pdf-viewer-state">Loading local PDF viewer…</div>,
+});
 
 export default function Studio() {
   const [project, setProject] = useState<ProjectData>(() => structuredClone(fixtureProject));
@@ -112,14 +119,18 @@ export default function Studio() {
     try {
       const response = await fetch('/api/compile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, variantId: active.id }) });
       if (!response.ok) { const result = await response.json(); throw new Error(result.error ?? 'Compilation failed.'); }
+      const metadata = parseCompileResponseMetadata(response);
       const blob = await response.blob();
+      if (blob.size < 100 || blob.type !== 'application/pdf' || new TextDecoder().decode(await blob.slice(0, 5).arrayBuffer()) !== '%PDF-') {
+        throw new Error('The local compiler returned an empty or invalid PDF. Retry the preview and check the compile service.');
+      }
       if (revision !== projectRevision.current) { setMessage('The document changed during compilation. Build a fresh preview.'); return; }
       const nextUrl = URL.createObjectURL(blob);
       setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return nextUrl; });
       setPdfFile(blob);
       setCompiledRevision(revision);
-      setPageCount(response.headers.get('X-Resume-Page-Count') ?? 'unknown');
-      setOverflow(response.headers.get('X-Resume-Overflow') === 'true');
+      setPageCount(String(metadata.pageCount));
+      setOverflow(metadata.overflow);
       setMessage('PDF compiled and verified locally.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Compilation failed.'); }
     finally { setBusy(false); }
@@ -209,7 +220,7 @@ export default function Studio() {
       <section className="preview-column"><div className="preview-toolbar"><div><span className="eyebrow">LIVE DOCUMENT</span><strong>{active.name}</strong><small>{pageCount ? `${pageCount} page${pageCount === '1' ? '' : 's'} · compiled by local TeX Live` : pdfUrl && compiledRevision !== revision ? 'Preview is out of date · build again to export current content' : 'Preview appears after compilation'}</small></div><Button variant="outline" className="button secondary" disabled={!pdfFile} onClick={exportPdf}>Download PDF</Button></div>
         {overflow && <Alert className="warning"><AlertTitle>Page limit exceeded.</AlertTitle><AlertDescription>Review content, section visibility, spacing, or page limit. Nothing was removed.</AlertDescription></Alert>}
         {message && <div className={`status-message ${message.toLowerCase().includes('failed') || message.toLowerCase().includes('rejected') || message.toLowerCase().includes('error') ? 'error' : ''}`}>{message}</div>}
-        <div className="paper-area">{pdfUrl ? <iframe title="Compiled resume PDF preview" src={pdfUrl} /> : <div className="empty-preview"><div className="paper-illustration"><strong>Your Name</strong><span>Professional Title</span><i /><b>EXPERIENCE</b><i /><i /><i /><b>PROJECTS</b><i /><i /></div><h2>Ready when you are</h2><p>Build a preview to compile your current variant with local pdflatex.</p><Button className="button primary" onClick={compile} disabled={busy}>{busy ? 'Compiling…' : 'Build preview'}</Button></div>}</div>
+        <div className="paper-area">{pdfUrl ? <CompiledPdfViewer key={pdfUrl} src={pdfUrl} expectedPageCount={pageCount ? Number(pageCount) : null} overflow={overflow} onPageCountChange={pages => setPageCount(String(pages))} /> : <div className="empty-preview"><div className="paper-illustration"><strong>Your Name</strong><span>Professional Title</span><i /><b>EXPERIENCE</b><i /><i /><i /><b>PROJECTS</b><i /><i /></div><h2>Ready when you are</h2><p>Build a preview to compile your current variant with local pdflatex.</p><Button className="button primary" onClick={compile} disabled={busy}>{busy ? 'Compiling…' : 'Build preview'}</Button></div>}</div>
         <div className="preview-footer"><span>●</span> Data and PDF compilation stay on this computer <span className="footer-spacer" /> A4 · {active.design.fontSize} pt</div>
       </section>
     </section>
