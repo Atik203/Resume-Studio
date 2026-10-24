@@ -15,11 +15,13 @@ test('local compile route returns a verified PDF and page metadata', async () =>
   });
   const response = await POST(request);
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('content-type'), 'application/pdf');
+  assert.match(response.headers.get('content-type'), /application\/json/);
+  assert.equal(response.headers.get('content-disposition'), null);
   assert.equal(response.headers.get('x-resume-page-count'), '1');
   assert.equal(response.headers.get('x-resume-max-pages'), '1');
   assert.equal(response.headers.get('x-resume-overflow'), 'false');
-  const pdf = new Uint8Array(await response.arrayBuffer());
+  const { pdfBase64 } = await response.json();
+  const pdf = Buffer.from(pdfBase64, 'base64');
   assert.ok(pdf.byteLength > 1000);
   const parsed = await PDFDocument.load(pdf);
   assert.equal(parsed.getPageCount(), 1);
@@ -39,7 +41,8 @@ test('local compile route reports actual over-limit page metadata without droppi
   assert.ok(Number(response.headers.get('x-resume-page-count')) > 1);
   assert.equal(response.headers.get('x-resume-max-pages'), '1');
   assert.equal(response.headers.get('x-resume-overflow'), 'true');
-  const pdf = Buffer.from(await response.arrayBuffer());
+  const { pdfBase64 } = await response.json();
+  const pdf = Buffer.from(pdfBase64, 'base64');
   const dir = await mkdtemp(path.join(tmpdir(), 'resume-studio-route-test-'));
   try {
     await writeFile(path.join(dir, 'route.pdf'), pdf);
@@ -69,4 +72,16 @@ test('local compile route reports a missing configured pdflatex executable', asy
     if (original === undefined) delete process.env.PDFLATEX_PATH;
     else process.env.PDFLATEX_PATH = original;
   }
+});
+
+test('local compile route cancels the child process when the preview request is aborted', async () => {
+  const controller = new AbortController();
+  const request = new Request('http://127.0.0.1/api/compile', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ project: fixtureProject, variantId: 'variant-resume' }), signal: controller.signal,
+  });
+  const compilation = POST(request);
+  setTimeout(() => controller.abort(), 50);
+  const response = await compilation;
+  assert.equal(response.status, 499);
 });

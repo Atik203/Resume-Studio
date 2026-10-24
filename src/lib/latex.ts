@@ -33,24 +33,35 @@ function link(label: string, rawUrl: string): string {
   return `\\href{\\detokenize{${url}}}{\\underline{${escapeLatex(label)}}}`;
 }
 
-function inlineLinks(links: { label: string; url: string }[]): string {
-  return links.map(item => link(item.label, item.url)).join(' \\quad ');
+function linkWithType(item: { type: string; label: string; url: string }, showMarker: boolean): string {
+  const marker = ({ website: 'WEB', linkedin: 'IN', github: 'GH', portfolio: 'PORT', other: 'LINK' } as Record<string, string>)[item.type] ?? 'LINK';
+  return `${showMarker ? `\\textsf{\\scriptsize [${marker}]}\\,` : ''}${link(item.label, item.url)}`;
+}
+
+function inlineLinks(links: { type: string; label: string; url: string }[], showMarkers: boolean): string {
+  return links.map(item => linkWithType(item, showMarkers)).join(' \\quad ');
 }
 
 export function renderLatex(resume: ResolvedVariant): string {
   const compact = resume.templateId === 't02-clean-compact';
   const modern = resume.templateId === 't03-modern-developer';
-  const academic = resume.templateId === 't04-academic-cv';
   const profile = resume.templateId === 't05-profile-cv';
-  const sectionRule = academic ? '1.2pt' : '0.45pt';
-  const margin = `${resume.design.marginMm}mm`;
   const fs = resume.design.fontSize;
   const baseline = (fs * 1.2).toFixed(2);
   const leading = Math.max(0.9, Math.min(1.5, resume.design.lineSpacing));
   const color = resume.design.accentColor.slice(1).toUpperCase();
   const textColor = resume.design.textColor.slice(1).toUpperCase();
+  const fontFamily = resume.design.fontFamily;
+  const fontPackages: Record<string, string> = {
+    serif: 'lmodern', sans: 'lmodern', 'latin-modern-serif': 'lmodern', 'latin-modern-sans': 'lmodern',
+    'tex-gyre-termes': 'tgtermes', 'tex-gyre-heros': 'tgheros', 'tex-gyre-pagella': 'tgpagella',
+    'tex-gyre-schola': 'tgschola', 'tex-gyre-cursor': 'tgcursor',
+  };
+  const fontPackage = fontPackages[fontFamily] ?? 'lmodern';
+  const fontSwitch = ['sans', 'latin-modern-sans', 'tex-gyre-heros'].includes(fontFamily) ? '\\renewcommand{\\familydefault}{\\sfdefault}'
+    : fontFamily === 'tex-gyre-cursor' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : '';
   const p = resume.profile;
-  const contacts = [resume.design.showEmail && p.email && link(p.email, `mailto:${p.email}`), resume.design.showPhone && p.phone && escapeLatex(p.phone), ...(resume.design.showLinks ? p.links.map(l => link(l.label, l.url)) : [])].filter(Boolean).join(' \\quad ');
+  const contacts = [resume.design.showEmail && p.email && link(p.email, `mailto:${p.email}`), resume.design.showPhone && p.phone && escapeLatex(p.phone), ...(resume.design.showLinks ? p.links.map(l => linkWithType(l, resume.design.showContactIcons)) : [])].filter(Boolean).join(' \\quad ');
   const entriesById = new Map(resume.entries.map(entry => [entry.id, entry]));
   const body = resume.sections.filter(section => section.visible).map(section => {
     const sectionEntries = section.entryIds.flatMap(id => entriesById.has(id) ? [entriesById.get(id)!] : []);
@@ -64,12 +75,19 @@ export function renderLatex(resume: ResolvedVariant): string {
       const date = entry.date ? (resume.design.dateAlignment === 'right' ? `\\hfill{\\small ${escapeLatex(entry.date)}}` : `\\par{\\small ${escapeLatex(entry.date)}}`) : '';
       const location = entry.location ? `\\par{\\small ${escapeLatex(entry.location)}}` : '';
       const description = entry.description ? `\\par ${escapeLatex(entry.description)}` : '';
-      const bullets = entry.bullets.length ? `\\begin{itemize}[leftmargin=1.25em,itemsep=${resume.design.bulletSpacing}pt,topsep=2pt]\n${entry.bullets.map(b => `\\item ${escapeLatex(b)}`).join('\n')}\\end{itemize}` : '';
+      const bullets = entry.bullets.length ? `\\begin{itemize}[leftmargin=${resume.design.bulletIndentMm}mm,itemsep=${resume.design.bulletSpacing}pt,topsep=2pt]\n${entry.bullets.map(b => `\\item ${escapeLatex(b)}`).join('\n')}\\end{itemize}` : '';
       const technologies = entry.technologies.length ? `\\par\\textbf{Technologies:} ${entry.technologies.map(escapeLatex).join(', ')}` : '';
-      const links = entry.links.length ? `\\par\\smallskip ${inlineLinks(entry.links)}` : '';
+      const links = entry.links.length ? `\\par\\smallskip ${inlineLinks(entry.links, resume.design.showContactIcons)}` : '';
       return `\\par\\smallskip\\noindent\\textbf{${heading}}${date}${location}${description}${bullets}${technologies}${links}`;
-    }).join('\n');
-    return `\\ResumeSection{${escapeLatex(section.label)}}\n${rows}`;
+    }).join(`\n\\vspace{${resume.design.entryGapPt}pt}\n`);
+    const style = section.design ?? {};
+    const sectionSize = style.fontSizePt ?? resume.design.fontSize;
+    const sectionBaseline = (sectionSize * 1.2).toFixed(2);
+    const marginLeft = style.marginLeftMm ?? 0;
+    const marginRight = style.marginRightMm ?? 0;
+    const divider = style.showDivider ?? resume.design.showDividers;
+    const dividerWeight = divider ? (style.dividerWeightPt ?? resume.design.dividerWeightPt) : 0;
+    return `\\par\\vspace{${style.marginTopPt ?? 0}pt}\\begingroup\\setlength{\\leftskip}{${marginLeft}mm}\\setlength{\\rightskip}{${marginRight}mm}\\vspace{${style.paddingTopPt ?? 0}pt}\\fontsize{${sectionSize}pt}{${sectionBaseline}pt}\\selectfont\\ResumeSection{${escapeLatex(section.label)}}{${dividerWeight}pt}{\\dimexpr\\linewidth-${marginLeft}mm-${marginRight}mm\\relax}\n${rows}\\par\\vspace{${style.paddingBottomPt ?? 0}pt}\\endgroup\\par\\vspace{${style.marginBottomPt ?? 0}pt}`;
   }).filter(Boolean).join('\n\\medskip\n');
   const name = escapeLatex(p.name || 'Your Name');
   const title = escapeLatex(p.title);
@@ -80,10 +98,10 @@ export function renderLatex(resume: ResolvedVariant): string {
     : headerText;
   const align = compact ? '\\raggedright' : '';
   return String.raw`\documentclass[10pt,${resume.design.paper === 'a4' ? 'a4paper' : 'letterpaper'}]{article}
-\usepackage[margin=${margin}]{geometry}
+\usepackage[top=${resume.design.marginTopMm}mm,right=${resume.design.marginRightMm}mm,bottom=${resume.design.marginBottomMm}mm,left=${resume.design.marginLeftMm}mm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{lmodern}
+\usepackage{${fontPackage}}
 \usepackage{microtype}
 \usepackage{enumitem}
 \usepackage{graphicx}
@@ -96,9 +114,9 @@ export function renderLatex(resume: ResolvedVariant): string {
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{${compact ? '1pt' : '2pt'}}
 \renewcommand{\baselinestretch}{${leading}}
-\newcommand{\ResumeSection}[1]{\par\addvspace{${compact ? '5pt' : academic ? '9pt' : '7pt'}}\noindent{\large\bfseries\color{${modern ? 'accent' : 'bodytext'}} #1}\par\vspace{1pt}\noindent\color{${modern ? 'accent' : 'bodytext'}}\rule{\linewidth}{${sectionRule}}\color{bodytext}\par\vspace{2pt}}
+\newcommand{\ResumeSection}[3]{\par\addvspace{${resume.design.sectionGapPt}pt}\noindent{\large\bfseries\color{${modern ? 'accent' : 'bodytext'}} #1}\par\vspace{1pt}\noindent\color{${modern ? 'accent' : 'bodytext'}}\rule{#3}{#2}\color{bodytext}\par\vspace{2pt}}
 \begin{document}
-${resume.design.fontFamily === 'sans' ? '\\renewcommand{\\familydefault}{\\sfdefault}' : ''}
+${fontSwitch}
 \fontsize{${fs}pt}{${baseline}pt}\selectfont
 \color{bodytext}
 ${align}

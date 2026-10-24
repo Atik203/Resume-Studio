@@ -268,5 +268,23 @@ At the end of every implementation phase, report:
 - Implemented with Next.js 16 App Router, TypeScript, Tailwind CSS v4, and shadcn/ui primitives. The checked-in build command uses Next's supported Webpack mode because the sandbox's Turbopack PostCSS worker could not start; development keeps the default Turbopack mode.
 - Local Windows TeX Live `pdflatex` was found and used. The route runs in the Node.js runtime, resolves `PDFLATEX_PATH` or `PATH`, uses fixed arguments with `shell: false`, disables shell escape, bounds execution/logs, validates text and page count, and cleans per-request temporary files.
 - The editor includes a synthetic starter library, master content plus variant overrides, section/entry visibility and ordering, editing and duplication, style/page controls, optional photo, IndexedDB save status, validated JSON backup/import, and compiled preview/export.
-- Verification run on 2026-10-25: `npm test` (11 passed; includes real local `pdflatex` compilation of all five templates, selectable-text/link checks, overflow preservation, route behavior, and missing-executable behavior), `npm run typecheck`, `npm run lint`, and `npm run build` (passed). The latest T1 synthetic PDF was rendered and visually inspected.
+- Verification run on 2026-10-25: `npm test` passed (29/29), `npm run lint`, `npm run typecheck`, and a production Webpack build passed. The build used `NEXT_DIST_DIR=.next-production` so it did not conflict with the active dev server. The T1 synthetic PDF has been rendered and visually inspected.
 - Remaining QA: browser-driven edit → reload → restore workflow was not automated in this restricted environment; photo coverage checks the profile-photo template compile path, while broad image-format/oversize UI interactions still need manual browser QA. Backup format is a versioned JSON file with photo data embedded, not ZIP. `pdflatex` availability and supported glyphs depend on the local TeX Live installation.
+
+## 12. V-next editor and preview polish (2026-10)
+
+- [x] Add a locally bundled DM Sans UI font and light/dark/system themes.
+- [x] Raise editor text and control sizes; persist theme and collapsed-library preference locally.
+- [x] Add a collapsible resume library rail and an accessible editor/PDF divider that supports mouse dragging and arrow-key resizing.
+- [x] Add phone/tablet Edit and PDF tabs; keep variant selection available while editing.
+- [x] Add local PDF.js page canvases, page navigation, zoom, fit controls, actual page metadata, and verified download validation.
+- [x] Return preview bytes inside a JSON response (without PDF MIME or attachment headers) so download managers do not capture every background compile. Browser verification now receives HTTP 200 and renders the compiled page.
+- [x] Start a local compile after an adjustable 0.5–2 second idle delay (800 ms default); abort obsolete fetches and propagate cancellation to the Node compiler.
+- [x] Add Quick and Advanced design controls, four presentation presets, reset-to-template-default, independent margins, and renderer-backed spacing/divider settings.
+- [x] Add typed website/LinkedIn/GitHub/portfolio links with local Lucide icons and preserve clickable, selectable labels in PDFs.
+- [x] Make profile and content sections collapsible; move privacy details out of the application header into the library sidebar.
+- [x] Add per-section font size, horizontal margins, vertical margins, padding, and divider visibility/weight, with page-break-safe LaTeX rendering.
+- [x] Add seven PDF font families and compile fixtures through each installed TeX Live family.
+- [x] Migrate version 1 backups to schema 2 and test preservation of content, photos, overrides, and design values.
+- [x] Verify browser preview end to end: agent-browser receives HTTP 200 JSON, the client verifies metadata and `%PDF-` bytes, and the actual PDF.js canvas renders one page with correct page count.
+- [ ] Verify manual file saving in the user's normal Chrome profile. The agent-browser download tool canceled its blob-triggered save even though preview rendering and route byte validation pass; a later browser automation session could not start because its socket directory was denied by the sandbox.

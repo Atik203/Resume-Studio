@@ -43,7 +43,7 @@ test('all five templates compile to selectable-text PDFs with local pdflatex', a
   const special = structuredClone(fixtureProject);
   const experience = special.library.entries.find(entry => entry.id === 'exp-1');
   experience.bullets[0] = 'Escaping test: \\ { } $ & % # _ ~ ^ with café and “quotes”.';
-  experience.links = [{ label: 'Long link', url: `https://example.test/${'long-path-segment-'.repeat(8)}?alpha=first&beta=second` }];
+  experience.links = [{ type: 'website', label: 'Long link', url: `https://example.test/${'long-path-segment-'.repeat(8)}?alpha=first&beta=second` }];
   special.library.profile.links = [];
   const templates = ['t01-simple-ats', 't02-clean-compact', 't03-modern-developer', 't04-academic-cv', 't05-profile-cv'];
   for (const templateId of templates) {
@@ -86,5 +86,31 @@ test('overflowing content stays in the compiled selectable-text PDF', async () =
     assert.ok(pages > project.variants[0].maxPages, `expected overflow, got ${pages} page(s)`);
     const text = await run('pdftotext', ['resume.pdf', '-'], dir);
     assert.match(text, /Preserved content marker 90/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('all bundled TeX Live font families compile locally', async () => {
+  const families = ['latin-modern-serif', 'latin-modern-sans', 'tex-gyre-termes', 'tex-gyre-heros', 'tex-gyre-pagella', 'tex-gyre-schola', 'tex-gyre-cursor'];
+  for (const fontFamily of families) {
+    const dir = await mkdtemp(path.join(tmpdir(), 'resume-studio-font-test-'));
+    try {
+      const variant = { ...fixtureProject.variants[0], design: { ...fixtureProject.variants[0].design, fontFamily } };
+      await writeFile(path.join(dir, 'resume.tex'), renderLatex(resolveVariant(fixtureProject, variant)), 'utf8');
+      await run(process.env.PDFLATEX_PATH || 'pdflatex', ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], dir);
+      assert.ok((await readFile(path.join(dir, 'resume.pdf'))).length > 1000, `${fontFamily} produced an empty PDF`);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  }
+});
+
+test('section-specific typography and spacing compile without losing text', async () => {
+  const project = structuredClone(fixtureProject);
+  project.variants[0].sections[0].design = { fontSizePt: 11, marginLeftMm: 5, marginRightMm: 3, marginTopPt: 4, marginBottomPt: 6, paddingTopPt: 2, paddingBottomPt: 3, showDivider: false };
+  const dir = await mkdtemp(path.join(tmpdir(), 'resume-studio-section-style-test-'));
+  try {
+    await writeFile(path.join(dir, 'resume.tex'), renderLatex(resolveVariant(project, project.variants[0])), 'utf8');
+    await run(process.env.PDFLATEX_PATH || 'pdflatex', ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], dir);
+    const text = await run('pdftotext', ['resume.pdf', '-'], dir);
+    assert.match(text, /Programming Languages/);
+    assert.match(text, /Frameworks & Libraries/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

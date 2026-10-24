@@ -13,20 +13,23 @@ export const dynamic = 'force-dynamic';
 const MAX_LOG = 48_000;
 const MAX_REQUEST_BYTES = 8_000_000;
 
-function run(executable: string, args: string[], cwd: string, timeoutMs = 30_000): Promise<{ code: number; log: string }> {
+function run(executable: string, args: string[], cwd: string, timeoutMs = 30_000, signal?: AbortSignal): Promise<{ code: number; log: string }> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new DOMException('Compilation was cancelled.', 'AbortError')); return; }
     const child = spawn(executable, args, {
       cwd, shell: false, windowsHide: true, timeout: timeoutMs,
       env: { NODE_ENV: process.env.NODE_ENV ?? 'production', ...Object.fromEntries(['PATH', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'USERPROFILE', 'APPDATA', 'TEXMFHOME'].flatMap(k => process.env[k] ? [[k, process.env[k] as string]] : [])) },
       stdio: 'pipe',
     });
     child.stdin.end();
+    const abort = () => child.kill();
+    signal?.addEventListener('abort', abort, { once: true });
     let log = '';
     const append = (chunk: Buffer) => { if (log.length < MAX_LOG) log += chunk.toString('utf8').slice(0, MAX_LOG - log.length); };
     child.stdout.on('data', append);
     child.stderr.on('data', append);
-    child.once('error', reject);
-    child.once('close', code => resolve({ code: code ?? -1, log }));
+    child.once('error', error => { signal?.removeEventListener('abort', abort); reject(error); });
+    child.once('close', code => { signal?.removeEventListener('abort', abort); resolve({ code: code ?? -1, log }); });
   });
 }
 
@@ -64,7 +67,8 @@ export async function POST(request: NextRequest) {
       if (photo) await writeFile(path.join(workDir, `profile-photo.${photo.extension}`), photo.bytes);
     }
     const executable = process.env.PDFLATEX_PATH?.trim() || 'pdflatex';
-    const compile = await run(executable, ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], workDir);
+    const compile = await run(executable, ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], workDir, 30_000, request.signal);
+    if (request.signal.aborted) return new NextResponse(null, { status: 499 });
     if (compile.code !== 0) {
       const missing = (compile as unknown as { error?: NodeJS.ErrnoException }).error?.code === 'ENOENT';
       const message = missing ? `pdflatex was not found. Add TeX Live's bin directory to PATH or set PDFLATEX_PATH to pdflatex.exe. Configured executable: ${executable}`
@@ -86,18 +90,18 @@ export async function POST(request: NextRequest) {
     }, 0);
     const expectedLinks = Number(Boolean(resolved.profile.email.trim())) + resolved.profile.links.filter(link => safeUrl(link.url)).length + resolved.entries.reduce((total, entry) => total + entry.links.filter(link => safeUrl(link.url)).length, 0);
     if (linkCount < expectedLinks) return NextResponse.json({ error: 'One or more PDF hyperlinks could not be verified. Check the link URLs and try again.' }, { status: 422 });
-    const extracted = await run('pdftotext', ['resume.pdf', '-'], workDir, 10_000).catch((error: NodeJS.ErrnoException) => {
+    const extracted = await run('pdftotext', ['resume.pdf', '-'], workDir, 10_000, request.signal).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') throw new Error('pdftotext was not found. Add TeX Live’s bin directory or Poppler to PATH so selectable PDF text can be verified.');
       throw error;
     });
     if (!extracted.log.trim()) return NextResponse.json({ error: 'The PDF contains no selectable text. Please check the selected content.' }, { status: 422 });
     const overflow = pageCount > resolved.maxPages;
-    return new NextResponse(new Uint8Array(pdf), { headers: {
-      'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="resume-studio.pdf"',
+    return NextResponse.json({ pdfBase64: pdf.toString('base64') }, { headers: {
       'X-Resume-Page-Count': String(pageCount ?? 'unknown'), 'X-Resume-Max-Pages': String(resolved.maxPages),
       'X-Resume-Overflow': String(overflow), 'Cache-Control': 'no-store',
     } });
   } catch (error) {
+    if (request.signal.aborted || (error instanceof Error && error.name === 'AbortError')) return new NextResponse(null, { status: 499 });
     const code = (error as NodeJS.ErrnoException)?.code;
     const message = code === 'ENOENT'
       ? `pdflatex was not found. Add TeX Live's bin directory to PATH or set PDFLATEX_PATH to pdflatex.exe. Configured executable: ${process.env.PDFLATEX_PATH?.trim() || 'pdflatex'}`

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import '@fontsource-variable/dm-sans';
 import './style.css';
 
 export const metadata: Metadata = { title: 'Resume Studio', description: 'Local-first resume and CV editor with local pdflatex exports.' };
