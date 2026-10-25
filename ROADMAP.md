@@ -93,7 +93,13 @@
   - Custom NER fine-tuning and benchmark dataset generator (`train_ner.py`) with precision/recall evaluation.
   - Categorized skill entity extraction API (`/api/extract-entities`).
   - Seamless offline fallback when Ollama or Python service is inactive.
-- [x] **Comprehensive Test Suite**: 42 automated Vitest/Node test cases covering LaTeX generation, escaping, page-fit optimization, orphan detection, and 6 Python ML tests (100% passing).
+- [x] **Phase 5: Deep LaTeX Developer Tools & Local Ecosystem**:
+  - Live LaTeX source inspector with line numbers, search filter, and instant copy/download (`.tex`).
+  - Side-by-side LaTeX diff viewer highlighting dynamic line additions (`+`) and deletions (`-`) across templates and presets.
+  - Standalone LaTeX ZIP package exporter (`/api/export-tex`) bundling `main.tex`, `resume-data.json`, `README.md`, and local portrait assets for instant compilation in TeX Live, MiKTeX, or Overleaf.
+  - Local Snapshot Time Machine with IndexedDB v2 durable storage for creating named checkpoints, previewing, restoring, and forking variants.
+  - ISO 19005-1 / PDF/A archival metadata injection switch for enterprise compliance and long-term digital preservation.
+- [x] **Comprehensive Test Suite**: 45 automated Node/TypeScript test cases covering LaTeX generation, escaping, page-fit optimization, orphan detection, Phase 5 ZIP/diff/archival tools, and 6 Python ML tests (100% passing).
 
 ---
 
