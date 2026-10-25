@@ -17,6 +17,7 @@ import { decodePdfBase64, parseCompileResponseMetadata } from '@/lib/compile-res
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
+import Link from 'next/link';
 import { getDesignPreset, type DesignPresetId } from '@/lib/design-presets';
 import {
   Download,
@@ -25,11 +26,18 @@ import {
   Plus,
   RefreshCw,
   Sliders,
-  Target,
   Sparkles,
   Code2,
   History,
   FileArchive,
+  ChevronDown,
+  FolderKanban,
+  MoreVertical,
+  FileText,
+  Check,
+  Sun,
+  Moon,
+  Home,
 } from 'lucide-react';
 
 import { Sidebar } from '@/components/studio/sidebar';
@@ -92,6 +100,9 @@ export default function Studio() {
   const [showSnapshotModal, setShowSnapshotModal] = useState(false);
   const [exportingZip, setExportingZip] = useState(false);
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
+  const [showDraftDropdown, setShowDraftDropdown] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const dragX = useRef<number | null>(null);
 
   // Drag and drop state
@@ -894,6 +905,295 @@ export default function Studio() {
         preferences.theme === 'dark' ? 'dark' : ''
       }`}
     >
+      {/* 0. FLOWCV-GRADE FLOATING TOPBAR */}
+      <header className="studio-topbar">
+        <div className="studio-topbar-left">
+          <Link href="/" className="studio-brand" title="Return to Landing Page">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-xs">
+              <FileText size={17} />
+            </div>
+            <span className="font-extrabold text-sm text-neutral-900 dark:text-neutral-100 tracking-tight hidden sm:inline">
+              Resume Studio
+            </span>
+          </Link>
+
+          {/* Floating Pill Navigation Tabs */}
+          <div className="studio-nav-pills" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activePane === 'editor'}
+              className={`studio-pill-btn ${activePane === 'editor' ? 'active' : ''}`}
+              onClick={() => setActivePane('editor')}
+            >
+              <FileEdit size={13} />
+              <span>Content</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activePane === 'design'}
+              className={`studio-pill-btn ${activePane === 'design' ? 'active' : ''}`}
+              onClick={() => setActivePane('design')}
+            >
+              <Sliders size={13} />
+              <span>Customize</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activePane === 'ats'}
+              className={`studio-pill-btn ${activePane === 'ats' ? 'active' : ''}`}
+              onClick={() => setActivePane('ats')}
+            >
+              <Sparkles size={13} />
+              <span>AI Tools</span>
+            </button>
+            <button
+              type="button"
+              className="studio-pill-btn hidden md:inline-flex"
+              onClick={() =>
+                setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))
+              }
+              title="Toggle sidebar overview"
+            >
+              <FolderKanban size={13} />
+              <span>Overview</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Draft Switcher + Primary Download + More Menu */}
+        <div className="studio-topbar-right">
+          {/* Draft Selector Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              className="draft-selector-btn"
+              onClick={() => setShowDraftDropdown(v => !v)}
+              title="Switch or manage drafts"
+            >
+              <span className="truncate max-w-[130px] sm:max-w-[180px]">{active.name}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {showDraftDropdown && (
+              <div
+                className="absolute right-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
+                onMouseLeave={() => setShowDraftDropdown(false)}
+              >
+                <div className="px-3 py-1.5 font-bold text-[11px] text-neutral-400 uppercase tracking-wider">
+                  Resume & CV Drafts
+                </div>
+                {project.variants.map(v => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => {
+                      updateProject(p => ({ ...p, activeVariantId: v.id }));
+                      setShowDraftDropdown(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
+                      v.id === active.id ? 'font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30' : ''
+                    }`}
+                  >
+                    <span className="truncate">{v.name}</span>
+                    {v.id === active.id && <Check size={14} className="text-emerald-600 dark:text-emerald-400" />}
+                  </button>
+                ))}
+                <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewDraftModal(true);
+                      setShowDraftDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-emerald-700 dark:text-emerald-400 font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-1.5"
+                  >
+                    <Plus size={13} />
+                    <span>Create New Draft…</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      duplicateDraft(active.id);
+                      setShowDraftDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                  >
+                    Duplicate Current Draft
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Primary Download Split Button */}
+          <div className="relative inline-flex items-center">
+            <Button
+              className="download-primary-btn"
+              disabled={busy}
+              onClick={pdfFile ? exportPdf : compile}
+              title="Download Verified PDF (Ctrl+S)"
+            >
+              {busy ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+              <span>{busy ? 'Compiling…' : 'Download'}</span>
+            </Button>
+            <button
+              type="button"
+              className="download-split-arrow"
+              onClick={() => setShowExportMenu(v => !v)}
+              title="Export options"
+            >
+              <ChevronDown size={13} />
+            </button>
+
+            {showExportMenu && (
+              <div
+                className="absolute right-0 top-full mt-1.5 w-56 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
+                onMouseLeave={() => setShowExportMenu(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportPdf();
+                    setShowExportMenu(false);
+                  }}
+                  disabled={!pdfFile}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 font-semibold text-neutral-900 dark:text-neutral-100"
+                >
+                  <Download size={13} className="text-emerald-600" />
+                  <span>Download Verified PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportLatexZip();
+                    setShowExportMenu(false);
+                  }}
+                  disabled={exportingZip}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
+                >
+                  <FileArchive size={13} className="text-amber-500" />
+                  <span>Export Standalone LaTeX (.zip)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    compile();
+                    setShowExportMenu(false);
+                  }}
+                  disabled={busy}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 border-t border-neutral-100 dark:border-neutral-800"
+                >
+                  <RefreshCw size={13} className="text-sky-500" />
+                  <span>Force Recompile (Ctrl+B)</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* More Menu (⋮) */}
+          <div className="relative">
+            <button
+              type="button"
+              className="studio-icon-btn"
+              onClick={() => setShowMoreMenu(v => !v)}
+              title="Developer tools & backups"
+            >
+              <MoreVertical size={16} />
+            </button>
+
+            {showMoreMenu && (
+              <div
+                className="absolute right-0 mt-1.5 w-56 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
+                onMouseLeave={() => setShowMoreMenu(false)}
+              >
+                <div className="px-3 py-1 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">
+                  Developer & History
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLatexInspectorModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
+                >
+                  <Code2 size={13} className="text-emerald-500" />
+                  <span>Inspect LaTeX Source</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSnapshotModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
+                >
+                  <History size={13} className="text-sky-500" />
+                  <span>Snapshot Time Machine</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPageFitModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
+                >
+                  <Sparkles size={13} className="text-purple-500" />
+                  <span>Page-Fit Assistant</span>
+                </button>
+
+                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                <div className="px-3 py-1 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">
+                  Project Backup
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportBackup();
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                >
+                  Export JSON Backup
+                </button>
+                <label className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer block">
+                  <span>Import JSON Backup</span>
+                  <input type="file" accept="application/json" onChange={importBackup} className="hidden" />
+                </label>
+
+                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreferences(p => ({
+                      ...p,
+                      theme: p.theme === 'dark' ? 'light' : 'dark',
+                    }));
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-between"
+                >
+                  <span>Toggle Dark Theme</span>
+                  {preferences.theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+                </button>
+
+                <Link
+                  href="/"
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-500 border-t border-neutral-100 dark:border-neutral-800"
+                >
+                  <Home size={13} />
+                  <span>Public Landing Page</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
       {/* Mobile Workspace Tabs */}
       <div className="mobile-workspace-tabs" role="tablist" aria-label="Mobile workspace view">
         <button
@@ -990,40 +1290,6 @@ export default function Studio() {
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Mode Switch Tabs (Editor vs Design vs ATS) */}
-            <div className="editor-mode-tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePane === 'editor'}
-                className={`editor-mode-tab ${activePane === 'editor' ? 'active' : ''}`}
-                onClick={() => setActivePane('editor')}
-              >
-                <FileEdit size={14} />
-                <span>Content</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePane === 'design'}
-                className={`editor-mode-tab ${activePane === 'design' ? 'active' : ''}`}
-                onClick={() => setActivePane('design')}
-              >
-                <Sliders size={14} />
-                <span>Design</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePane === 'ats'}
-                className={`editor-mode-tab ${activePane === 'ats' ? 'active' : ''}`}
-                onClick={() => setActivePane('ats')}
-              >
-                <Target size={14} />
-                <span>ATS Matcher</span>
-              </button>
             </div>
           </div>
 
@@ -1272,86 +1538,37 @@ export default function Studio() {
 
         {/* 3. RIGHT FLUID PDF PREVIEW COLUMN */}
         <section className="preview-column" aria-label="PDF preview and export">
-          {/* Preview Toolbar */}
-          <div className="preview-toolbar">
-            <div className="preview-status">
-              <div className="preview-status-top">
-                <strong>{active.name}</strong>
-                {pageCount && (
-                  <span className={`page-badge ${overflow ? 'overflow' : ''}`}>
-                    {pageCount} {pageCount === '1' ? 'Page' : 'Pages'}
-                    {overflow ? ' · Over Limit' : ' · Verified'}
-                  </span>
-                )}
-              </div>
-              <small>
-                {compiledRevision === revision
-                  ? 'Up to date with current editor content'
-                  : 'Edits pending · Recompile to verify'}
-              </small>
+          {/* Clean FlowCV Preview Status Bar */}
+          <div className="preview-canvas-header flex items-center justify-between px-5 py-3 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center gap-2.5">
+              <span className="font-bold text-xs text-neutral-800 dark:text-neutral-200">{active.name}</span>
+              {pageCount && (
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    overflow
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  }`}
+                >
+                  {pageCount} {pageCount === '1' ? 'Page' : 'Pages'} · {overflow ? 'Over Limit' : 'Verified'}
+                </span>
+              )}
+              <span className="text-[11px] text-neutral-400 hidden sm:inline">
+                {compiledRevision === revision ? '· Up to date' : '· Edits pending'}
+              </span>
             </div>
 
-            <div className="preview-actions">
-              <Button
-                variant="outline"
-                size="sm"
-                className="button secondary"
-                onClick={() => setShowLatexInspectorModal(true)}
-                title="Inspect generated LaTeX source and view template diffs"
-              >
-                <Code2 size={13} className="text-emerald-400" />
-                <span>LaTeX</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="button secondary"
-                onClick={() => setShowSnapshotModal(true)}
-                title="Browse and restore local IndexedDB checkpoints"
-              >
-                <History size={13} className="text-sky-400" />
-                <span>Snapshots</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`button secondary page-fit-trigger-btn ${overflow ? 'is-overflow' : ''}`}
-                onClick={() => setShowPageFitModal(true)}
-                title="Intelligent spacing optimizer to fit target page without content loss"
-              >
-                <Sparkles size={13} className="text-primary" />
-                <span>{overflow ? 'Auto-Fit to 1 Page' : 'Page-Fit Assistant'}</span>
-              </Button>
-              <Button
-                className="button primary"
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="text-xs font-semibold text-neutral-500 hover:text-emerald-600 flex items-center gap-1.5 transition-colors"
                 onClick={compile}
                 disabled={busy}
                 title="Compile with local pdflatex (Shortcut: Ctrl+B)"
               >
-                <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
-                <span>{busy ? 'Compiling…' : 'Compile PDF'}</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="button secondary download-btn"
-                disabled={!pdfFile}
-                onClick={exportPdf}
-                title="Download verified PDF (Shortcut: Ctrl+S)"
-              >
-                <Download size={14} />
-                <span>Download PDF</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="button secondary"
-                onClick={exportLatexZip}
-                disabled={exportingZip}
-                title="Export complete standalone LaTeX package (.zip) for Overleaf / TeX Live"
-              >
-                <FileArchive size={13} className={exportingZip ? 'animate-spin' : 'text-amber-400'} />
-                <span>{exportingZip ? 'Packing…' : 'ZIP'}</span>
-              </Button>
+                <RefreshCw size={13} className={busy ? 'animate-spin text-emerald-500' : ''} />
+                <span>{busy ? 'Compiling…' : 'Recompile'}</span>
+              </button>
             </div>
           </div>
 
