@@ -587,17 +587,17 @@ select option {
 
 /* Collapsed Sidebar Mode */
 .workspace.library-collapsed .sidebar-header {
-  padding: 14px 10px;
-  justify-content: center;
+  padding: 12px 6px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .workspace.library-collapsed .brand-info,
 .workspace.library-collapsed .sidebar-section-title,
 .workspace.library-collapsed .new-draft-btn span,
-.workspace.library-collapsed .draft-info,
-.workspace.library-collapsed .draft-actions,
-.workspace.library-collapsed .sidebar-nav-btn span,
-.workspace.library-collapsed .theme-tab-btn span,
+.workspace.library-collapsed .draft-item-title-row,
+.workspace.library-collapsed .draft-page-target,
 .workspace.library-collapsed .sidebar-footer-actions,
 .workspace.library-collapsed .engine-status span {
   display: none !important;
@@ -608,26 +608,63 @@ select option {
   align-items: center;
 }
 
+.workspace.library-collapsed .sidebar-section-head {
+  justify-content: center;
+  padding: 0;
+  width: 100%;
+}
+
+.workspace.library-collapsed .new-draft-btn {
+  padding: 8px;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .workspace.library-collapsed .draft-item {
+  align-items: center;
   justify-content: center;
   padding: 8px 4px;
+  width: 100%;
 }
 
-.workspace.library-collapsed .draft-main {
+.workspace.library-collapsed .draft-item-top {
   justify-content: center;
 }
 
-.workspace.library-collapsed .sidebar-nav-btn {
-  justify-content: center;
-  padding: 9px;
+.workspace.library-collapsed .doc-mode-badge {
+  font-size: 11px;
+  padding: 4px 6px;
 }
 
 .workspace.library-collapsed .sidebar-footer {
   padding: 10px 6px;
+  align-items: center;
 }
 
 .workspace.library-collapsed .theme-switcher {
   flex-direction: column;
+  padding: 3px;
+  gap: 3px;
+  width: 100%;
+}
+
+.workspace.library-collapsed .theme-tab-btn {
+  padding: 6px;
+  justify-content: center;
+  width: 100%;
+}
+
+.workspace.library-collapsed .theme-tab-btn span {
+  display: none !important;
+}
+
+.workspace.library-collapsed .engine-status {
+  justify-content: center;
+  padding: 6px 0;
 }
 
 /* ==========================================================================
