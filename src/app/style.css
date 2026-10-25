@@ -1622,27 +1622,155 @@ select option {
   height: 100%;
 }
 
-/* Mobile & Tablet Responsiveness */
+/* Section Quick Nav Chips */
+.section-quick-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 0 2px;
+  scrollbar-width: none;
+}
+
+.section-quick-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.section-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-line);
+  color: var(--studio-muted);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.12s ease;
+}
+
+.section-chip:hover {
+  background: var(--studio-accent-subtle);
+  color: var(--studio-accent);
+  border-color: var(--studio-accent);
+}
+
+/* Curated Color Swatches */
+.color-swatches-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.color-swatches {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.color-swatch-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.color-swatch-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch-btn.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px var(--studio-focus);
+}
+
+/* Two-Page Spread in PDF Viewer */
+.pdf-page-viewport.two-page-spread .react-pdf__Document {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* Bullet Writing Helper Tip */
+.bullet-helper {
+  font-size: 11px;
+  color: var(--studio-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 5px;
+  line-height: 1.4;
+  padding: 4px 6px;
+  background: var(--studio-panel-muted);
+  border-radius: 6px;
+  border: 1px dashed var(--studio-line);
+}
+
+/* Pre-made Section Adder Grid */
+.add-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.premade-section-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--studio-line);
+  background: var(--studio-panel);
+  color: var(--studio-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.premade-section-btn:hover {
+  background: var(--studio-accent-subtle);
+  border-color: var(--studio-accent);
+  color: var(--studio-accent);
+}
+
+/* Mobile & Split-Screen Responsiveness */
 .mobile-workspace-tabs {
   display: none;
 }
 
 @media (max-width: 960px) {
   .app-shell {
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column !important;
   }
 
   .mobile-workspace-tabs {
-    display: flex;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 30;
     padding: 8px 12px;
     background: var(--studio-panel);
     border-bottom: 1px solid var(--studio-line);
     gap: 8px;
+    flex: 0 0 auto;
+    width: 100%;
   }
 
   .mobile-workspace-tabs button {
@@ -1651,9 +1779,13 @@ select option {
     border-radius: 8px;
     background: var(--studio-panel);
     color: var(--studio-muted);
-    padding: 10px;
-    font-size: 13px;
+    padding: 8px 12px;
+    font-size: 12.5px;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
 
   .mobile-workspace-tabs button.active {
@@ -1665,8 +1797,9 @@ select option {
   .workspace {
     display: flex;
     flex-direction: column;
-    height: auto;
-    overflow: visible;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .workspace-divider {
@@ -1675,6 +1808,7 @@ select option {
 
   .sidebar {
     height: auto;
+    max-height: 200px;
     border-right: 0;
     border-bottom: 1px solid var(--studio-line);
   }
@@ -1682,13 +1816,22 @@ select option {
   .workspace-editor .preview-column,
   .workspace-preview .sidebar,
   .workspace-preview .editor-column {
-    display: none;
+    display: none !important;
   }
 
   .workspace-preview .preview-column {
-    display: flex;
-    height: calc(100vh - 60px);
-    min-height: 540px;
+    display: flex !important;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
     padding: 10px;
   }
+
+  .workspace-editor .editor-column {
+    display: flex !important;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+  }
 }
+
