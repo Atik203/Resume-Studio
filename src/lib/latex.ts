@@ -124,7 +124,8 @@ export function renderLatex(resume: ResolvedVariant): string {
     const marginRight = style.marginRightMm ?? 0;
     const divider = style.showDivider ?? resume.design.showDividers;
     const dividerWeight = divider ? (style.dividerWeightPt ?? resume.design.dividerWeightPt) : 0;
-    return `\\par\\vspace{${style.marginTopPt ?? 0}pt}\\begingroup\\setlength{\\leftskip}{${marginLeft}mm}\\setlength{\\rightskip}{${marginRight}mm}\\vspace{${style.paddingTopPt ?? 0}pt}\\fontsize{${sectionSize}pt}{${sectionBaseline}pt}\\selectfont\\ResumeSection{${escapeLatex(section.label)}}{${dividerWeight}pt}{\\dimexpr\\linewidth-${marginLeft}mm-${marginRight}mm\\relax}\n${rows}\\par\\vspace{${style.paddingBottomPt ?? 0}pt}\\endgroup\\par\\vspace{${style.marginBottomPt ?? 0}pt}`;
+    const pageBreak = style.pageBreakBefore ? '\\clearpage\\noindent ' : '';
+    return `${pageBreak}\\par\\vspace{${style.marginTopPt ?? 0}pt}\\begingroup\\setlength{\\leftskip}{${marginLeft}mm}\\setlength{\\rightskip}{${marginRight}mm}\\vspace{${style.paddingTopPt ?? 0}pt}\\fontsize{${sectionSize}pt}{${sectionBaseline}pt}\\selectfont\\ResumeSection{${escapeLatex(section.label)}}{${dividerWeight}pt}{\\dimexpr\\linewidth-${marginLeft}mm-${marginRight}mm\\relax}\n${rows}\\par\\vspace{${style.paddingBottomPt ?? 0}pt}\\endgroup\\par\\vspace{${style.marginBottomPt ?? 0}pt}`;
   }).filter(Boolean).join('\n\\medskip\n');
 
   const name = escapeLatex(p.name || 'Your Name');

@@ -12,12 +12,14 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { designPresets, getDesignPreset, type DesignPresetId } from '@/lib/design-presets';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 export interface DesignTabProps {
   active: ResumeVariant;
   designMode: 'quick' | 'advanced';
   onChangeDesignMode: (mode: 'quick' | 'advanced') => void;
   onUpdateVariant: (updater: (v: ResumeVariant) => ResumeVariant) => void;
+  onOpenPageFitModal?: () => void;
 }
 
 const templates: { id: TemplateId; name: string; description: string }[] = [
@@ -42,6 +44,7 @@ export function DesignTab({
   designMode,
   onChangeDesignMode,
   onUpdateVariant,
+  onOpenPageFitModal,
 }: DesignTabProps) {
   return (
     <div className={`editor-content design-content ${designMode}`}>
@@ -85,6 +88,33 @@ export function DesignTab({
           Reset to Template Default
         </button>
       </div>
+
+      {/* 1-Click Page-Fit Assistant Banner */}
+      {onOpenPageFitModal && (
+        <div className="page-fit-banner">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Sparkles size={16} />
+            </span>
+            <div>
+              <strong className="text-xs font-semibold block text-foreground">
+                Page-Fit Assistant & Spacing Intelligence
+              </strong>
+              <span className="text-[11px] text-muted-foreground">
+                Micro-tune margins, gaps, and font metrics to fit target pages without losing content.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="page-fit-banner-btn"
+            onClick={onOpenPageFitModal}
+          >
+            <span>Launch Assistant</span>
+            <ArrowRight size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Design Presets */}
       <div className="preset-grid">

@@ -279,6 +279,13 @@ export function SectionCard({
                   onCheckedChange={checked => onEditDesign({ showDivider: checked })}
                 />
               </label>
+              <label className="setting-toggle" title="Push this section to the top of the next page">
+                <span>📄 Page Break Before Section</span>
+                <Switch
+                  checked={Boolean(section.design?.pageBreakBefore)}
+                  onCheckedChange={checked => onEditDesign({ pageBreakBefore: checked })}
+                />
+              </label>
             </div>
           </details>
 
