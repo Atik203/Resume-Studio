@@ -31,14 +31,29 @@ import {
   History,
   FileArchive,
   ChevronDown,
-  FolderKanban,
   MoreVertical,
   FileText,
   Check,
   Sun,
   Moon,
   Home,
+  PanelLeft,
+  User,
+  Zap,
+  Briefcase,
+  FolderGit2,
+  GraduationCap,
+  Layers,
 } from 'lucide-react';
+
+function getSectionChipIcon(id: string) {
+  const lower = id.toLowerCase();
+  if (lower.includes('skill')) return <Zap size={12} className="text-amber-500 shrink-0" />;
+  if (lower.includes('exp') || lower.includes('work')) return <Briefcase size={12} className="text-emerald-500 shrink-0" />;
+  if (lower.includes('proj')) return <FolderGit2 size={12} className="text-purple-500 shrink-0" />;
+  if (lower.includes('edu')) return <GraduationCap size={12} className="text-sky-500 shrink-0" />;
+  return <Layers size={12} className="text-neutral-400 shrink-0" />;
+}
 
 import { Sidebar } from '@/components/studio/sidebar';
 import { ProfileCard } from '@/components/studio/profile-card';
@@ -88,7 +103,7 @@ export default function Studio() {
   const [activePane, setActivePane] = useState<'editor' | 'design' | 'ats'>('editor');
   const [designMode, setDesignMode] = useState<'quick' | 'advanced'>('quick');
   const [preferences, setPreferences] = useState<UiPreferences>(defaultUiPreferences);
-  const [editorWidth, setEditorWidth] = useState(540);
+  const [editorWidth, setEditorWidth] = useState(620);
   const [isResizing, setIsResizing] = useState(false);
   const [workspacePane, setWorkspacePane] = useState<'editor' | 'preview'>('editor');
   const [profileCollapsed, setProfileCollapsed] = useState(false);
@@ -169,6 +184,15 @@ export default function Studio() {
     }, 500);
     return () => window.clearTimeout(timer);
   }, [project, ready]);
+
+  useEffect(() => {
+    // Ensure editor content always resets gracefully to top on variant or pane switch
+    const timer = setTimeout(() => {
+      const container = document.querySelector('.editor-content');
+      if (container) container.scrollTop = 0;
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [active.id, activePane]);
 
   const updateProject = useCallback((updater: (current: ProjectData) => ProjectData) => {
     compileController.current?.abort();
@@ -870,6 +894,16 @@ export default function Studio() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [compile, exportPdf, pdfFile]);
 
+  // Auto-compile preview on initial mount & debounced changes
+  useEffect(() => {
+    if (!ready) return;
+    if (!preferences.autoPreview) return;
+    const timer = setTimeout(() => {
+      compile();
+    }, preferences.previewDelayMs || 800);
+    return () => clearTimeout(timer);
+  }, [ready, revision, active.id, preferences.autoPreview, preferences.previewDelayMs, compile]);
+
   function exportBackup() {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -917,6 +951,19 @@ export default function Studio() {
             </span>
           </Link>
 
+          {/* Dedicated Sidebar Toggle Button */}
+          <button
+            type="button"
+            className="studio-icon-btn hidden md:inline-flex"
+            onClick={() =>
+              setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))
+            }
+            title={preferences.sidebarCollapsed ? 'Expand library sidebar' : 'Collapse library sidebar'}
+            aria-label="Toggle library sidebar"
+          >
+            <PanelLeft size={16} />
+          </button>
+
           {/* Floating Pill Navigation Tabs */}
           <div className="studio-nav-pills" role="tablist">
             <button
@@ -948,17 +995,6 @@ export default function Studio() {
             >
               <Sparkles size={13} />
               <span>AI Tools</span>
-            </button>
-            <button
-              type="button"
-              className="studio-pill-btn hidden md:inline-flex"
-              onClick={() =>
-                setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))
-              }
-              title="Toggle sidebar overview"
-            >
-              <FolderKanban size={13} />
-              <span>Overview</span>
             </button>
           </div>
         </div>
@@ -1253,45 +1289,75 @@ export default function Studio() {
 
         {/* 2. CENTER FLUID EDITOR COLUMN */}
         <section className="editor-column" aria-label="Document editor">
-          {/* Editor Header */}
-          <div className="editor-header">
-            <div className="editor-header-main">
-              <div className="editor-breadcrumb">
-                <span>{active.mode === 'cv' ? 'Curriculum Vitae' : 'Resume'}</span>
-                <span>·</span>
-                <span>
-                  {active.targetPages} {active.targetPages === 1 ? 'Page Target' : 'Pages Target'}
-                </span>
-              </div>
-              <input
-                className="editor-title-input"
-                value={active.name}
-                aria-label="Draft name"
-                placeholder="Name your resume draft"
-                onChange={e => updateVariant(v => ({ ...v, name: e.target.value }))}
-              />
-              {/* Section Quick Nav Chips */}
-              <div className="section-quick-nav" aria-label="Jump to section">
-                <button
-                  type="button"
-                  className="section-chip"
-                  onClick={() => scrollToSection('profile')}
-                >
-                  👤 Profile
-                </button>
-                {active.sections.map(section => (
+          {/* Context-Aware Editor Header */}
+          {activePane === 'editor' ? (
+            <div className="editor-header">
+              <div className="editor-header-main">
+                <div className="editor-breadcrumb">
+                  <span>{active.mode === 'cv' ? 'Curriculum Vitae' : 'Resume'}</span>
+                  <span>·</span>
+                  <span>
+                    {active.targetPages} {active.targetPages === 1 ? 'Page Target' : 'Pages Target'}
+                  </span>
+                </div>
+                <input
+                  className="editor-title-input"
+                  value={active.name}
+                  aria-label="Draft name"
+                  placeholder="Name your resume draft"
+                  onChange={e => updateVariant(v => ({ ...v, name: e.target.value }))}
+                />
+                {/* Section Quick Nav Chips */}
+                <div className="section-quick-nav" aria-label="Jump to section">
                   <button
-                    key={section.id}
                     type="button"
                     className="section-chip"
-                    onClick={() => scrollToSection(section.id)}
+                    onClick={() => scrollToSection('profile')}
                   >
-                    {section.label}
+                    <User size={12} className="text-emerald-500 shrink-0" />
+                    <span>Profile</span>
                   </button>
-                ))}
+                  {active.sections.map(section => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className="section-chip"
+                      onClick={() => scrollToSection(section.id)}
+                    >
+                      {getSectionChipIcon(section.id)}
+                      <span>{section.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : activePane === 'design' ? (
+            <div className="editor-header design-header">
+              <div className="editor-header-main">
+                <div className="editor-breadcrumb">
+                  <span>Document Styling</span>
+                  <span>·</span>
+                  <span>Template: {active.templateId}</span>
+                </div>
+                <h2 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
+                  Design, Typography & Spacing
+                </h2>
+              </div>
+            </div>
+          ) : (
+            <div className="editor-header ats-header">
+              <div className="editor-header-main">
+                <div className="editor-breadcrumb">
+                  <span>Intelligence & Matcher</span>
+                  <span>·</span>
+                  <span>Local GPU Inference</span>
+                </div>
+                <h2 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
+                  ATS Matcher & Keyword Optimizer
+                </h2>
+              </div>
+            </div>
+          )}
 
           {/* Editor Content Area */}
           {activePane === 'editor' ? (
@@ -1594,15 +1660,9 @@ export default function Studio() {
             </Alert>
           )}
 
-          {/* Status Message */}
-          {message && (
-            <div
-              className={`status-message ${
-                ['failed', 'rejected', 'error', 'not found'].some(token => message.toLowerCase().includes(token))
-                  ? 'error'
-                  : ''
-              }`}
-            >
+          {/* Status / Error Message (Only show genuine alerts, avoid redundant green success line) */}
+          {message && ['failed', 'rejected', 'error', 'not found', 'exception'].some(token => message.toLowerCase().includes(token)) && (
+            <div className="status-message error mx-4 my-2">
               {message}
             </div>
           )}
@@ -1617,6 +1677,14 @@ export default function Studio() {
                 overflow={overflow}
                 onPageCountChange={pages => setPageCount(String(pages))}
               />
+            ) : busy ? (
+              <div className="empty-preview flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 mb-4 animate-spin">
+                  <RefreshCw size={22} />
+                </div>
+                <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-200">Compiling with local pdflatex…</h2>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Generating verified PDF from your local TeX Live engine</p>
+              </div>
             ) : (
               <div className="empty-preview">
                 <div className="paper-illustration" aria-hidden="true">
