@@ -41,6 +41,7 @@ import {
   Plus,
   RefreshCw,
   Sliders,
+  Sparkles,
   Sun,
   Trash2,
   Upload,
@@ -61,6 +62,26 @@ const contactTypes: { id: ContactLinkType; label: string }[] = [
   { id: 'github', label: 'GitHub' },
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'other', label: 'Other' },
+];
+
+const COLOR_SWATCHES = [
+  { name: 'Forest Emerald', hex: '#1b6342' },
+  { name: 'Classic Navy', hex: '#1e3a8a' },
+  { name: 'Slate Executive', hex: '#1e293b' },
+  { name: 'Academic Crimson', hex: '#7f1d1d' },
+  { name: 'Developer Teal', hex: '#315b78' },
+  { name: 'Monochrome ATS', hex: '#171717' },
+];
+
+const PREMADE_SECTIONS = [
+  { id: 'experience', label: 'Work Experience', defaultTitle: 'Software Engineer', icon: '💼' },
+  { id: 'education', label: 'Education', defaultTitle: 'BSc Computer Science', icon: '🎓' },
+  { id: 'projects', label: 'Key Projects', defaultTitle: 'Project Name', icon: '🚀' },
+  { id: 'skills', label: 'Technical Skills', defaultTitle: 'Languages & Tools', icon: '⚡' },
+  { id: 'certifications', label: 'Certifications', defaultTitle: 'AWS Certified Solutions Architect', icon: '📜' },
+  { id: 'awards', label: 'Honors & Awards', defaultTitle: 'Dean’s Honor List', icon: '🏆' },
+  { id: 'languages', label: 'Languages', defaultTitle: 'English (Fluent), Spanish', icon: '🌐' },
+  { id: 'custom', label: 'Custom Section', defaultTitle: 'New Item', icon: '📝' },
 ];
 
 const CompiledPdfViewer = dynamic(() => import('@/components/pdf/compiled-pdf-viewer'), {
@@ -94,6 +115,7 @@ export default function Studio() {
   const [showNewDraftModal, setShowNewDraftModal] = useState(false);
   const [newDraftType, setNewDraftType] = useState<'resume' | 'cv'>('resume');
   const [newDraftName, setNewDraftName] = useState('');
+  const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
   const dragX = useRef<number | null>(null);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
@@ -272,12 +294,41 @@ export default function Studio() {
     }));
   }
 
-  function addSection() {
-    const id = `custom-${crypto.randomUUID()}`;
-    updateVariant(v => ({
-      ...v,
-      sections: [...v.sections, { id, label: 'New section', entryIds: [], visible: true }],
+  function addPredefinedSection(premade: (typeof PREMADE_SECTIONS)[number]) {
+    const sectionId = `${premade.id}-${crypto.randomUUID().slice(0, 8)}`;
+    const entryId = `entry-${crypto.randomUUID()}`;
+    const newEntry: ContentEntry = {
+      id: entryId,
+      sectionId,
+      title: premade.defaultTitle,
+      subtitle: '',
+      date: '',
+      location: '',
+      description: '',
+      bullets: premade.id === 'experience' || premade.id === 'projects' ? ['Key impact or achievement with measurable result.'] : [],
+      technologies: premade.id === 'skills' || premade.id === 'projects' ? ['TypeScript', 'React'] : [],
+      links: [],
+    };
+
+    updateProject(p => ({
+      ...p,
+      library: { ...p.library, entries: [...p.library.entries, newEntry] },
+      variants: p.variants.map(v =>
+        v.id === p.activeVariantId
+          ? {
+              ...v,
+              selectedEntryIds: [...v.selectedEntryIds, entryId],
+              sections: [...v.sections, { id: sectionId, label: premade.label, entryIds: [entryId], visible: true }],
+            }
+          : v
+      ),
     }));
+
+    setShowAddSectionMenu(false);
+    setMessage(`Added ${premade.label} section.`);
+    setTimeout(() => {
+      document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }
 
   function sectionIsCollapsed(sectionId: string) {
@@ -292,6 +343,22 @@ export default function Studio() {
         [active.id]: ids.includes(sectionId) ? ids.filter(id => id !== sectionId) : [...ids, sectionId],
       };
     });
+  }
+
+  function scrollToSection(sectionId: string) {
+    if (sectionId === 'profile') {
+      setProfileCollapsed(false);
+      document.getElementById('card-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    // Expand section if collapsed
+    setCollapsedSections(current => {
+      const ids = current[active.id] ?? active.sections.map(s => s.id);
+      return { ...current, [active.id]: ids.filter(id => id !== sectionId) };
+    });
+    setTimeout(() => {
+      document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   }
 
   function editSectionDesign(sectionId: string, patch: Partial<SectionDesignSettings>) {
@@ -328,7 +395,7 @@ export default function Studio() {
     }));
   }
 
-  // --- DRAFT CREATION & COPYING ---
+  // --- DRAFT CREATION & DUPLICATION ---
   function handleOpenNewDraftModal() {
     setNewDraftType('resume');
     setNewDraftName('');
@@ -515,15 +582,7 @@ export default function Studio() {
     }
   }, [active.id, project]);
 
-  useEffect(() => {
-    if (!ready || !preferences.autoPreview) return;
-    const timer = window.setTimeout(() => {
-      void compile();
-    }, preferences.previewDelayMs);
-    return () => window.clearTimeout(timer);
-  }, [compile, preferences.autoPreview, preferences.previewDelayMs, ready]);
-
-  function exportPdf() {
+  const exportPdf = useCallback(() => {
     if (!pdfFile || !pdfUrl) return;
     const anchor = document.createElement('a');
     anchor.href = pdfUrl;
@@ -533,7 +592,31 @@ export default function Studio() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-  }
+  }, [active.name, pdfFile, pdfUrl]);
+
+  // Global Keyboard Shortcuts (Ctrl+B = Recompile, Ctrl+S = Export PDF)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        void compile();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !e.shiftKey) {
+        e.preventDefault();
+        exportPdf();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [compile, exportPdf]);
+
+  useEffect(() => {
+    if (!ready || !preferences.autoPreview) return;
+    const timer = window.setTimeout(() => {
+      void compile();
+    }, preferences.previewDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [compile, preferences.autoPreview, preferences.previewDelayMs, ready]);
 
   function exportBackup() {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
@@ -600,19 +683,23 @@ export default function Studio() {
 
   return (
     <main className="app-shell">
-      {/* Mobile view switchers */}
+      {/* Mobile / Split-screen view tabs */}
       <nav className="mobile-workspace-tabs" aria-label="Workspace view">
         <button
+          type="button"
           className={workspacePane === 'editor' ? 'active' : ''}
           onClick={() => setWorkspacePane('editor')}
         >
-          Edit draft
+          <FileText size={15} />
+          <span>Edit Draft</span>
         </button>
         <button
+          type="button"
           className={workspacePane === 'preview' ? 'active' : ''}
           onClick={() => setWorkspacePane('preview')}
         >
-          PDF preview
+          <Sparkles size={15} />
+          <span>PDF Preview</span>
         </button>
       </nav>
 
@@ -643,6 +730,7 @@ export default function Studio() {
               </div>
             </div>
             <button
+              type="button"
               className="sidebar-collapse-btn"
               title={preferences.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-label={preferences.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -847,6 +935,35 @@ export default function Studio() {
                 placeholder="Name your resume draft"
                 onChange={e => updateVariant(v => ({ ...v, name: e.target.value }))}
               />
+              {/* Section Quick Nav Chips */}
+              <div className="section-quick-nav" aria-label="Jump to section">
+                <button
+                  type="button"
+                  className="section-chip"
+                  onClick={() => scrollToSection('profile')}
+                >
+                  👤 Profile
+                </button>
+                {active.sections.map(section => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className="section-chip"
+                    onClick={() => scrollToSection(section.id)}
+                  >
+                    {section.id.includes('exp')
+                      ? '💼'
+                      : section.id.includes('edu')
+                      ? '🎓'
+                      : section.id.includes('proj')
+                      ? '🚀'
+                      : section.id.includes('skill')
+                      ? '⚡'
+                      : '📄'}{' '}
+                    {section.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="editor-mode-tabs" role="tablist" aria-label="Editor tabs">
@@ -875,7 +992,7 @@ export default function Studio() {
           {activePane === 'editor' ? (
             <div className="editor-content">
               {/* Profile Card */}
-              <Card className="form-card gap-0">
+              <Card id="card-profile" className="form-card gap-0">
                 <CardHeader className="card-title p-0">
                   <div className="card-title-left">
                     <span className="step">01</span>
@@ -1042,6 +1159,7 @@ export default function Studio() {
                   const collapsed = sectionIsCollapsed(section.id);
                   return (
                     <Card
+                      id={`section-${section.id}`}
                       className={`form-card section-card gap-0 ${collapsed ? 'is-collapsed' : ''}`}
                       key={section.id}
                     >
@@ -1347,6 +1465,12 @@ export default function Studio() {
                                       placeholder="Key accomplishment&#10;Quantifiable impact or project detail"
                                       onChange={e => editEntry(entryId, { bullets: e.target.value.split('\n') })}
                                     />
+                                    <div className="bullet-helper">
+                                      <Sparkles size={13} className="text-primary shrink-0" />
+                                      <span>
+                                        Action verbs: Built · Designed · Architected · Optimized · Spearheaded · Automated
+                                      </span>
+                                    </div>
                                   </label>
                                   <label className="wide">
                                     <span>Technologies · comma separated</span>
@@ -1405,9 +1529,43 @@ export default function Studio() {
                   );
                 })}
 
-                <Button variant="outline" className="add-section" onClick={addSection}>
-                  ＋ Add Custom Section
-                </Button>
+                {/* Pre-made Section Selector */}
+                {showAddSectionMenu ? (
+                  <div className="p-4 bg-card border border-border rounded-xl shadow-xs">
+                    <div className="flex items-center justify-between mb-3">
+                      <strong className="text-sm font-semibold">Choose Section to Add</strong>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setShowAddSectionMenu(false)}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                    <div className="add-section-grid">
+                      {PREMADE_SECTIONS.map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="premade-section-btn"
+                          onClick={() => addPredefinedSection(item)}
+                        >
+                          <span className="text-base">{item.icon}</span>
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="add-section"
+                    onClick={() => setShowAddSectionMenu(true)}
+                  >
+                    <Plus size={15} />
+                    <span>Add New Section (Experience, Education, Skills, Custom…)</span>
+                  </Button>
+                )}
               </div>
             </div>
           ) : (
@@ -1634,19 +1792,43 @@ export default function Studio() {
                       </label>
                     ))}
 
-                    <label>
-                      <span>Accent Color</span>
-                      <Input
-                        className="color-input"
-                        type="color"
-                        value={active.design.accentColor}
-                        onChange={e =>
-                          updateVariant(v => ({
-                            ...v,
-                            design: { ...v.design, accentColor: e.target.value },
-                          }))
-                        }
-                      />
+                    <label className="wide">
+                      <span>Accent Color & Curated Palettes</span>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          className="color-input w-16"
+                          type="color"
+                          value={active.design.accentColor}
+                          onChange={e =>
+                            updateVariant(v => ({
+                              ...v,
+                              design: { ...v.design, accentColor: e.target.value },
+                            }))
+                          }
+                        />
+                        <div className="color-swatches">
+                          {COLOR_SWATCHES.map(swatch => (
+                            <button
+                              key={swatch.hex}
+                              type="button"
+                              className={`color-swatch-btn ${
+                                active.design.accentColor.toLowerCase() === swatch.hex.toLowerCase()
+                                  ? 'active'
+                                  : ''
+                              }`}
+                              style={{ backgroundColor: swatch.hex }}
+                              title={`${swatch.name} (${swatch.hex})`}
+                              aria-label={swatch.name}
+                              onClick={() =>
+                                updateVariant(v => ({
+                                  ...v,
+                                  design: { ...v.design, accentColor: swatch.hex },
+                                }))
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </label>
 
                     <label className="advanced-only">
@@ -1965,7 +2147,7 @@ export default function Studio() {
                 className="button secondary"
                 onClick={compile}
                 disabled={busy}
-                title="Compile with local pdflatex"
+                title="Compile with local pdflatex (Shortcut: Ctrl+B)"
               >
                 <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
                 <span>{busy ? 'Compiling…' : 'Recompile'}</span>
@@ -1975,7 +2157,7 @@ export default function Studio() {
                 className="button primary"
                 disabled={!pdfFile || compiledRevision !== revision}
                 onClick={exportPdf}
-                title="Download verified PDF compiled with pdflatex"
+                title="Download verified PDF (Shortcut: Ctrl+S)"
               >
                 <Download size={14} />
                 <span>Download PDF</span>
