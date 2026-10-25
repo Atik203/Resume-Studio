@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Copy,
   Download,
-  FileText,
+  FolderKanban,
   Monitor,
   Moon,
   Plus,
@@ -66,10 +66,10 @@ export function Sidebar({
           style={{ cursor: collapsed ? 'pointer' : 'default' }}
         >
           <div className="brand-mark">
-            <FileText size={16} />
+            <FolderKanban size={16} />
           </div>
           <div className="brand-info">
-            <span className="brand-title">Resume Studio</span>
+            <span className="brand-title">Workspace</span>
             <span className="brand-badge">
               <span className={`save-pulse ${saveState}`} />
               {saveStateText}
