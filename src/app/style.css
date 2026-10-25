@@ -3004,5 +3004,195 @@ select option {
   transform: translateY(0);
 }
 
+/* ==========================================================================
+   FLOWCV-GRADE UI/UX DESIGN SYSTEM OVERHAUL
+   ========================================================================== */
+
+/* 1. Floating Topbar */
+.studio-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  padding: 0 18px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.studio-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.studio-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.studio-brand:hover {
+  opacity: 0.85;
+}
+
+.studio-nav-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  background: var(--muted);
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+}
+
+.studio-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.studio-pill-btn:hover {
+  color: var(--foreground);
+}
+
+.studio-pill-btn.active {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+.studio-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draft-selector-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.draft-selector-btn:hover {
+  background: var(--card);
+  border-color: var(--ring);
+}
+
+.download-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 9999px 0 0 9999px !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  border: none;
+  height: 34px !important;
+  transition: all 0.15s ease;
+}
+
+.download-primary-btn:hover {
+  filter: brightness(1.08);
+}
+
+.download-split-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 34px;
+  border-radius: 0 9999px 9999px 0;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.download-split-arrow:hover {
+  filter: brightness(1.08);
+}
+
+.studio-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.studio-icon-btn:hover {
+  color: var(--foreground);
+  background: var(--card);
+}
+
+/* 2. FlowCV Cards & Collapsed Rows */
+.flowcv-card {
+  border-radius: 16px !important;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s ease;
+}
+
+.flowcv-card:hover {
+  border-color: var(--ring);
+}
+
+.entry-summary-row {
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+}
+
+.entry-summary-row:hover {
+  border-color: var(--ring);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.preview-canvas-header {
+  height: 48px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
 
 
