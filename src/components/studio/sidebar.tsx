@@ -59,26 +59,22 @@ export function Sidebar({
       aria-label="Resume Studio drafts navigation"
     >
       {/* Brand Header */}
-      <div className="sidebar-brand">
-        <div className="brand-logo">
-          <FileText size={16} />
-        </div>
-        <div className="brand-info">
-          <span className="brand-name">Resume Studio</span>
-          <span className="brand-subtitle">LaTeX · Windows</span>
-        </div>
-        {/* Autosave status badge */}
-        <div
-          className={`save-pill ${saveState}`}
-          title={saveStateText}
-          aria-live="polite"
-        >
-          <span className="save-pill-dot" />
-          <span className="save-pill-text">{saveStateText}</span>
+      <div className="sidebar-header">
+        <div className="sidebar-brand">
+          <div className="brand-mark">
+            <FileText size={16} />
+          </div>
+          <div className="brand-info">
+            <span className="brand-title">Resume Studio</span>
+            <span className="brand-badge">
+              <span className={`save-pulse ${saveState}`} />
+              {saveStateText}
+            </span>
+          </div>
         </div>
         <button
           type="button"
-          className="collapse-rail-btn"
+          className="sidebar-collapse-btn"
           onClick={onToggleCollapse}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -87,79 +83,78 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Drafts Section Header */}
-      <div className="sidebar-section-header">
-        <span className="sidebar-section-title">Drafts & Documents</span>
-        <span className="draft-count-badge">{project.variants.length}</span>
-      </div>
+      <div className="sidebar-body">
+        {/* Drafts Section Header */}
+        <div className="sidebar-section-head">
+          <span className="sidebar-section-title">Drafts & Documents</span>
+          <button
+            type="button"
+            className="new-draft-btn"
+            onClick={onOpenNewDraftModal}
+            title="Create new draft"
+          >
+            <Plus size={13} />
+            <span>New Draft</span>
+          </button>
+        </div>
 
-      {/* Drafts & Documents List */}
-      <div className="sidebar-drafts-list" role="tablist" aria-label="Resume drafts">
-        {project.variants.map(variant => {
-          const isActive = variant.id === activeVariantId;
-          return (
-            <div
-              key={variant.id}
-              className={`draft-item ${isActive ? 'active' : ''}`}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => onSelectVariant(variant.id)}
-            >
-              <div className="draft-item-top">
-                <span className={`doc-mode-badge ${variant.mode}`}>
-                  {variant.mode === 'cv' ? 'CV' : 'RESUME'}
-                </span>
-                <span className="draft-page-target">
-                  {variant.targetPages} {variant.targetPages === 1 ? 'Page' : 'Pages'}
-                </span>
-              </div>
-              <div className="draft-item-title-row">
-                <input
-                  className="draft-name-input"
-                  value={variant.name}
-                  onClick={e => e.stopPropagation()}
-                  onChange={e => onRenameVariant(variant.id, e.target.value)}
-                  placeholder="Draft name"
-                  aria-label={`Name for draft ${variant.name}`}
-                />
-                <div className="draft-item-actions" onClick={e => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    className="draft-action-btn"
-                    title="Duplicate draft (Make a copy)"
-                    aria-label={`Duplicate draft ${variant.name}`}
-                    onClick={() => onDuplicateVariant(variant.id)}
-                  >
-                    <Copy size={12} />
-                  </button>
-                  {project.variants.length > 1 && (
+        {/* Drafts & Documents List */}
+        <div className="drafts-list" role="tablist" aria-label="Resume drafts">
+          {project.variants.map(variant => {
+            const isActive = variant.id === activeVariantId;
+            return (
+              <div
+                key={variant.id}
+                className={`draft-item ${isActive ? 'active' : ''}`}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => onSelectVariant(variant.id)}
+                title={collapsed ? `${variant.name} (${variant.mode.toUpperCase()})` : undefined}
+              >
+                <div className="draft-item-top">
+                  <span className={`doc-mode-badge ${variant.mode}`}>
+                    {variant.mode === 'cv' ? 'CV' : 'RES'}
+                  </span>
+                  <span className="draft-page-target">
+                    {variant.targetPages} {variant.targetPages === 1 ? 'Page' : 'Pages'}
+                  </span>
+                </div>
+                <div className="draft-item-title-row">
+                  <input
+                    className="draft-name-input"
+                    value={variant.name}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => onRenameVariant(variant.id, e.target.value)}
+                    placeholder="Draft name"
+                    aria-label={`Name for draft ${variant.name}`}
+                  />
+                  <div className="draft-item-actions" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
-                      className="draft-action-btn delete"
-                      title="Delete draft"
-                      aria-label={`Delete draft ${variant.name}`}
-                      onClick={() => onDeleteVariant(variant.id)}
+                      className="draft-action-btn"
+                      title="Duplicate draft (Make a copy)"
+                      aria-label={`Duplicate draft ${variant.name}`}
+                      onClick={() => onDuplicateVariant(variant.id)}
                     >
-                      <Trash2 size={12} />
+                      <Copy size={12} />
                     </button>
-                  )}
+                    {project.variants.length > 1 && (
+                      <button
+                        type="button"
+                        className="draft-action-btn delete"
+                        title="Delete draft"
+                        aria-label={`Delete draft ${variant.name}`}
+                        onClick={() => onDeleteVariant(variant.id)}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* New Draft Button */}
-      <div className="sidebar-action-container">
-        <Button
-          variant="outline"
-          className="button secondary w-full justify-start new-draft-btn"
-          onClick={onOpenNewDraftModal}
-        >
-          <Plus size={14} />
-          <span>New Draft (Resume / CV)</span>
-        </Button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Sidebar Footer (Utility Dock) */}

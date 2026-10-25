@@ -771,7 +771,11 @@ export default function Studio() {
         </button>
       </div>
 
-      <section className={`workspace workspace-${workspacePane}`}>
+      <section
+        className={`workspace workspace-${workspacePane} ${
+          preferences.sidebarCollapsed ? 'library-collapsed' : ''
+        }`}
+      >
         {/* 1. COLLAPSIBLE LEFT SIDEBAR */}
         <Sidebar
           project={project}
