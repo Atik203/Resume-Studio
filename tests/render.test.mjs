@@ -114,3 +114,34 @@ test('section-specific typography and spacing compile without losing text', asyn
     assert.match(text, /Frameworks & Libraries/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+test('markdown formatting in bullets and header layout variants compile to PDF', async () => {
+  const project = structuredClone(fixtureProject);
+  const exp = project.library.entries.find(entry => entry.id === 'exp-1');
+  exp.bullets = [
+    'Engineered **Next.js frontend** and improved latency by **45%**.',
+    'Mentored junior engineers with *empathy* and *clear standards*.',
+    'Published live showcase at [Personal Showcase](https://example.test/showcase).',
+  ];
+
+  for (const headerLayout of ['centered', 'left', 'split']) {
+    for (const dividerStyle of ['solid', 'accent', 'dotted', 'none']) {
+      const dir = await mkdtemp(path.join(tmpdir(), 'resume-studio-layout-test-'));
+      try {
+        const variant = {
+          ...project.variants[0],
+          design: {
+            ...project.variants[0].design,
+            headerLayout,
+            dividerStyle,
+          },
+        };
+        await writeFile(path.join(dir, 'resume.tex'), renderLatex(resolveVariant(project, variant)), 'utf8');
+        await run(process.env.PDFLATEX_PATH || 'pdflatex', ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], dir);
+        const text = await run('pdftotext', ['resume.pdf', '-'], dir);
+        assert.match(text, /Engineered Next.js frontend/);
+        assert.match(text, /Personal Showcase/);
+      } finally { await rm(dir, { recursive: true, force: true }); }
+    }
+  }
+});

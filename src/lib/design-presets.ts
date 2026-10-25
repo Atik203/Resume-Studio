@@ -24,5 +24,7 @@ export function getDesignPreset(id: DesignPresetId, templateId: TemplateId, mode
     sectionGapPt: academic ? 9 : compact ? 5 : 7, entryGapPt: academic ? 4 : compact ? 0 : 1,
     bulletIndentMm: 4.4, dividerWeightPt: academic ? 1.2 : 0.45,
     showDividers: true, showContactIcons: false,
+    headerLayout: compact ? 'left' : 'centered',
+    dividerStyle: 'solid',
   };
 }

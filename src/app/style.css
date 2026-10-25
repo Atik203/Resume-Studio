@@ -1835,3 +1835,208 @@ select option {
   }
 }
 
+/* ==========================================================================
+   PHASE 1: Drag-and-Drop, Bullet Formatting & Photo Cropper Styles
+   ========================================================================== */
+
+/* 1. Drag and Drop Reordering */
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  color: var(--studio-muted);
+  cursor: grab;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  background: var(--studio-panel-muted);
+  color: var(--studio-accent);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.section-card.is-dragging,
+.entry-editor.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.995);
+  transition: opacity 0.15s ease;
+}
+
+.section-card.is-drag-over-top,
+.entry-editor.is-drag-over-top {
+  border-top: 3px solid var(--studio-accent) !important;
+}
+
+.section-card.is-drag-over-bottom,
+.entry-editor.is-drag-over-bottom {
+  border-bottom: 3px solid var(--studio-accent) !important;
+}
+
+/* 2. Bullet Rich Formatting Toolbar */
+.bullet-format-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-control-border);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: -1px;
+}
+
+.format-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--studio-text);
+  background: var(--studio-panel);
+  border: 1px solid var(--studio-control-border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.format-btn:hover {
+  background: var(--studio-accent-subtle);
+  color: var(--studio-accent);
+  border-color: var(--studio-accent);
+}
+
+.format-bar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--studio-line);
+  margin: 0 4px;
+}
+
+.format-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--studio-muted);
+}
+
+.format-verb-pill {
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--studio-panel);
+  color: var(--studio-muted);
+  border: 1px solid var(--studio-control-border);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.format-verb-pill:hover {
+  background: var(--studio-accent-subtle);
+  color: var(--studio-accent);
+  border-color: var(--studio-accent);
+}
+
+/* 3. Profile Photo Avatar & Cropper */
+.profile-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-control-border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.profile-avatar-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--studio-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--studio-panel);
+  flex-shrink: 0;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.photo-cropper-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.photo-cropper-modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--studio-panel);
+  border: 1px solid var(--studio-line);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cropper-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  height: 280px;
+  cursor: grab;
+}
+
+.cropper-stage:active {
+  cursor: grabbing;
+}
+
+.cropper-stage canvas {
+  display: block;
+}
+
+.cropper-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--studio-muted);
+}
+
+.cropper-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--studio-accent);
+}
+

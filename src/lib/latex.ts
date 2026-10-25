@@ -17,6 +17,43 @@ export function escapeLatex(input: string): string {
   return output;
 }
 
+export function formatMarkdownLatex(input: string): string {
+  if (!input) return '';
+  const pattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  let lastIndex = 0;
+  let result = '';
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(input)) !== null) {
+    if (match.index > lastIndex) {
+      result += escapeLatex(input.slice(lastIndex, match.index));
+    }
+
+    if (match[1] !== undefined && match[2] !== undefined) {
+      const label = match[1];
+      const rawUrl = match[2];
+      const validUrl = safeUrl(rawUrl);
+      if (validUrl) {
+        result += `\\href{\\detokenize{${validUrl}}}{\\underline{${escapeLatex(label)}}}`;
+      } else {
+        result += escapeLatex(label);
+      }
+    } else if (match[3] !== undefined) {
+      result += `\\textbf{${escapeLatex(match[3])}}`;
+    } else if (match[4] !== undefined) {
+      result += `\\textit{${escapeLatex(match[4])}}`;
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < input.length) {
+    result += escapeLatex(input.slice(lastIndex));
+  }
+
+  return result;
+}
+
 export function safeUrl(raw: string): string | null {
   try {
     const url = new URL(raw);
@@ -68,14 +105,14 @@ export function renderLatex(resume: ResolvedVariant): string {
     if (!sectionEntries.length) return '';
     const rows = sectionEntries.map(entry => {
       if (section.id === 'skills') {
-        const skills = entry.description || entry.technologies.map(escapeLatex).join(', ');
-        return `\\par\\noindent\\textbf{${escapeLatex(entry.title)}:} ${escapeLatex(skills)}`;
+        const skills = entry.description ? formatMarkdownLatex(entry.description) : entry.technologies.map(escapeLatex).join(', ');
+        return `\\par\\noindent\\textbf{${escapeLatex(entry.title)}:} ${skills}`;
       }
       const heading = [entry.title, entry.subtitle].filter(Boolean).map(escapeLatex).join(' | ');
       const date = entry.date ? (resume.design.dateAlignment === 'right' ? `\\hfill{\\small ${escapeLatex(entry.date)}}` : `\\par{\\small ${escapeLatex(entry.date)}}`) : '';
       const location = entry.location ? `\\par{\\small ${escapeLatex(entry.location)}}` : '';
-      const description = entry.description ? `\\par ${escapeLatex(entry.description)}` : '';
-      const bullets = entry.bullets.length ? `\\begin{itemize}[leftmargin=${resume.design.bulletIndentMm}mm,itemsep=${resume.design.bulletSpacing}pt,topsep=2pt]\n${entry.bullets.map(b => `\\item ${escapeLatex(b)}`).join('\n')}\\end{itemize}` : '';
+      const description = entry.description ? `\\par ${formatMarkdownLatex(entry.description)}` : '';
+      const bullets = entry.bullets.length ? `\\begin{itemize}[leftmargin=${resume.design.bulletIndentMm}mm,itemsep=${resume.design.bulletSpacing}pt,topsep=2pt]\n${entry.bullets.map(b => `\\item ${formatMarkdownLatex(b)}`).join('\n')}\\end{itemize}` : '';
       const technologies = entry.technologies.length ? `\\par\\textbf{Technologies:} ${entry.technologies.map(escapeLatex).join(', ')}` : '';
       const links = entry.links.length ? `\\par\\smallskip ${inlineLinks(entry.links, resume.design.showContactIcons)}` : '';
       return `\\par\\smallskip\\noindent\\textbf{${heading}}${date}${location}${description}${bullets}${technologies}${links}`;
@@ -89,14 +126,30 @@ export function renderLatex(resume: ResolvedVariant): string {
     const dividerWeight = divider ? (style.dividerWeightPt ?? resume.design.dividerWeightPt) : 0;
     return `\\par\\vspace{${style.marginTopPt ?? 0}pt}\\begingroup\\setlength{\\leftskip}{${marginLeft}mm}\\setlength{\\rightskip}{${marginRight}mm}\\vspace{${style.paddingTopPt ?? 0}pt}\\fontsize{${sectionSize}pt}{${sectionBaseline}pt}\\selectfont\\ResumeSection{${escapeLatex(section.label)}}{${dividerWeight}pt}{\\dimexpr\\linewidth-${marginLeft}mm-${marginRight}mm\\relax}\n${rows}\\par\\vspace{${style.paddingBottomPt ?? 0}pt}\\endgroup\\par\\vspace{${style.marginBottomPt ?? 0}pt}`;
   }).filter(Boolean).join('\n\\medskip\n');
+
   const name = escapeLatex(p.name || 'Your Name');
   const title = escapeLatex(p.title);
   const location = resume.design.showLocation ? escapeLatex(p.location) : '';
-  const headerText = `\\begin{center}{\\LARGE\\bfseries ${name}}\\par${title ? `\\vspace{2pt}{\\large ${title}}\\par` : ''}\\vspace{5pt}\\small ${contacts}${location ? `\\\\${location}` : ''}\\end{center}`;
+  const headerLayout = resume.design.headerLayout ?? (compact ? 'left' : 'centered');
+
+  const centeredHeader = `\\begin{center}{\\LARGE\\bfseries ${name}}\\par${title ? `\\vspace{2pt}{\\large ${title}}\\par` : ''}\\vspace{5pt}\\small ${contacts}${location ? `\\\\${location}` : ''}\\end{center}`;
+  const leftHeader = `\\noindent{\\LARGE\\bfseries ${name}}\\par${title ? `\\vspace{2pt}{\\large\\color{${modern ? 'accent' : 'bodytext'}} ${title}}\\par` : ''}\\vspace{4pt}{\\small ${contacts}${location ? ` \\quad ${location}` : ''}}\\par`;
+  const splitHeader = `\\noindent\\begin{minipage}[b]{0.58\\linewidth}\\raggedright{\\LARGE\\bfseries ${name}}\\par${title ? `\\vspace{2pt}{\\large ${title}}` : ''}\\end{minipage}\\hfill\\begin{minipage}[b]{0.40\\linewidth}\\raggedleft\\small ${contacts}${location ? `\\par ${location}` : ''}\\end{minipage}\\par`;
+
+  const defaultHeader = headerLayout === 'left' ? leftHeader : headerLayout === 'split' ? splitHeader : centeredHeader;
   const header = profile && p.photoDataUrl
     ? `\\noindent\\begin{minipage}[c]{0.77\\linewidth}\\raggedright{\\LARGE\\bfseries ${name}}\\par${title ? `{\\large ${title}}\\par` : ''}\\vspace{4pt}\\small ${contacts}\\par ${location}\\end{minipage}\\hfill\\begin{minipage}[c]{0.17\\linewidth}\\raggedleft\\includegraphics[width=22mm,height=26mm,keepaspectratio]{profile-photo}\\end{minipage}\\par\\vspace{12pt}`
-    : headerText;
-  const align = compact ? '\\raggedright' : '';
+    : defaultHeader;
+
+  const dividerStyle = resume.design.dividerStyle ?? 'solid';
+  const dividerColor = dividerStyle === 'accent' || modern ? 'accent' : 'bodytext';
+  const ruleMacro = dividerStyle === 'none'
+    ? ''
+    : dividerStyle === 'dotted'
+      ? `\\color{${dividerColor}}\\makebox[#3]{\\dotfill}\\color{bodytext}`
+      : `\\color{${dividerColor}}\\rule{#3}{#2}\\color{bodytext}`;
+
+  const align = compact && headerLayout !== 'centered' ? '\\raggedright' : '';
   return String.raw`\documentclass[10pt,${resume.design.paper === 'a4' ? 'a4paper' : 'letterpaper'}]{article}
 \usepackage[top=${resume.design.marginTopMm}mm,right=${resume.design.marginRightMm}mm,bottom=${resume.design.marginBottomMm}mm,left=${resume.design.marginLeftMm}mm]{geometry}
 \usepackage[T1]{fontenc}
@@ -114,7 +167,7 @@ export function renderLatex(resume: ResolvedVariant): string {
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{${compact ? '1pt' : '2pt'}}
 \renewcommand{\baselinestretch}{${leading}}
-\newcommand{\ResumeSection}[3]{\par\addvspace{${resume.design.sectionGapPt}pt}\noindent{\large\bfseries\color{${modern ? 'accent' : 'bodytext'}} #1}\par\vspace{1pt}\noindent\color{${modern ? 'accent' : 'bodytext'}}\rule{#3}{#2}\color{bodytext}\par\vspace{2pt}}
+\newcommand{\ResumeSection}[3]{\par\addvspace{${resume.design.sectionGapPt}pt}\noindent{\large\bfseries\color{${modern ? 'accent' : 'bodytext'}} #1}\par\vspace{1pt}\noindent${ruleMacro}\par\vspace{2pt}}
 \begin{document}
 ${fontSwitch}
 \fontsize{${fs}pt}{${baseline}pt}\selectfont
