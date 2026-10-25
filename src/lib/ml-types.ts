@@ -65,10 +65,48 @@ export interface AtsSimulationResult {
   extracted_clean_text: string;
 }
 
+export interface OllamaStatus {
+  online: boolean;
+  preferred_model: string;
+  model_available: boolean;
+  installed_models: string[];
+  error?: string;
+}
+
+export interface PolishVariation {
+  key: 'quantified' | 'action' | 'compact';
+  title: string;
+  tag: string;
+  description: string;
+  text: string;
+  score: number;
+  verb_strength: 'strong' | 'moderate' | 'weak';
+  first_verb?: string;
+  has_metrics: boolean;
+  has_methodology: boolean;
+  delta_score: number;
+}
+
+export interface PolishBulletResponse {
+  success: boolean;
+  source: string;
+  original: {
+    text: string;
+    score: number;
+    verb_strength: 'strong' | 'moderate' | 'weak';
+    first_verb?: string;
+    has_metrics: boolean;
+    has_methodology: boolean;
+  };
+  variations: PolishVariation[];
+}
+
 export interface MLServiceHealth {
   status: 'online' | 'offline';
   service?: string;
   version?: string;
   skills_in_taxonomy?: number;
   message?: string;
+  ollama?: OllamaStatus;
 }
+

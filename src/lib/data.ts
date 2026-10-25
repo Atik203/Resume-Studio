@@ -77,6 +77,18 @@ export interface DesignSettings {
   showContactIcons: boolean;
   headerLayout?: HeaderLayout;
   dividerStyle?: DividerStyle;
+  pdfaCompliant?: boolean;
+}
+
+export interface ResumeSnapshot {
+  id: string;
+  name: string;
+  variantId: string;
+  variantName: string;
+  templateId: string;
+  createdAt: string;
+  pageCount?: number;
+  projectData: ProjectData;
 }
 
 export interface ResumeVariant {
@@ -229,7 +241,8 @@ function isDesign(v: unknown): v is DesignSettings {
     typeof v.dividerWeightPt === 'number' && Number.isFinite(v.dividerWeightPt) && v.dividerWeightPt >= 0.1 && v.dividerWeightPt <= 3 &&
     typeof v.showDividers === 'boolean' && typeof v.showContactIcons === 'boolean' &&
     (v.headerLayout === undefined || ['centered', 'left', 'split'].includes(String(v.headerLayout))) &&
-    (v.dividerStyle === undefined || ['solid', 'accent', 'dotted', 'none'].includes(String(v.dividerStyle)));
+    (v.dividerStyle === undefined || ['solid', 'accent', 'dotted', 'none'].includes(String(v.dividerStyle))) &&
+    (v.pdfaCompliant === undefined || typeof v.pdfaCompliant === 'boolean');
 }
 function isVariant(v: unknown): v is ResumeVariant {
   return isObject(v) && isString(v.id) && isString(v.name) && (v.mode === 'resume' || v.mode === 'cv') &&

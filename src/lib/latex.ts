@@ -150,6 +150,10 @@ export function renderLatex(resume: ResolvedVariant): string {
       ? `\\color{${dividerColor}}\\makebox[#3]{\\dotfill}\\color{bodytext}`
       : `\\color{${dividerColor}}\\rule{#3}{#2}\\color{bodytext}`;
 
+  const pdfMetadata = resume.design.pdfaCompliant
+    ? `,\n  pdftitle={${escapeLatex(p.name)} - ${escapeLatex(p.title || 'Resume')}},\n  pdfauthor={${escapeLatex(p.name)}},\n  pdfsubject={Resume / Curriculum Vitae},\n  pdfproducer={Resume Studio Local Engine},\n  pdfcreator={LaTeX with hyperref}`
+    : '';
+
   const align = compact && headerLayout !== 'centered' ? '\\raggedright' : '';
   return String.raw`\documentclass[10pt,${resume.design.paper === 'a4' ? 'a4paper' : 'letterpaper'}]{article}
 \usepackage[top=${resume.design.marginTopMm}mm,right=${resume.design.marginRightMm}mm,bottom=${resume.design.marginBottomMm}mm,left=${resume.design.marginLeftMm}mm]{geometry}
@@ -163,7 +167,7 @@ export function renderLatex(resume: ResolvedVariant): string {
 \usepackage{hyperref}
 \definecolor{accent}{HTML}{${color}}
 \definecolor{bodytext}{HTML}{${textColor}}
-\hypersetup{colorlinks=true,urlcolor=accent,linkcolor=accent}
+\hypersetup{colorlinks=true,urlcolor=accent,linkcolor=accent${pdfMetadata}}
 \pagestyle{${resume.design.pageNumbers ? 'plain' : 'empty'}}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{${compact ? '1pt' : '2pt'}}
