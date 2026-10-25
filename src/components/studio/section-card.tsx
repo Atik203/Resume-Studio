@@ -23,6 +23,7 @@ import {
   Zap,
   FileText,
   Check,
+  X,
 } from 'lucide-react';
 
 export interface SectionCardProps {
@@ -93,17 +94,17 @@ export function SectionCard({
   return (
     <Card
       id={`section-${section.id}`}
-      className={`flowcv-card section-card rounded-2xl border border-neutral-200/90 bg-white shadow-xs transition-all ${
+      className={`flowcv-card section-card shrink-0 min-h-fit rounded-2xl border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs transition-all ${
         isCollapsed ? 'is-collapsed' : ''
       } ${dragClasses}`}
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
       {/* 1. FLOWCV SECTION HEADER */}
-      <div className="p-4 sm:p-5 flex items-center justify-between gap-3 border-b border-neutral-100">
+      <div className="p-4 sm:p-5 flex items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <span
-            className="drag-handle text-neutral-400 hover:text-neutral-700 cursor-grab active:cursor-grabbing p-1"
+            className="drag-handle text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-grab active:cursor-grabbing p-1"
             draggable
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
@@ -113,31 +114,26 @@ export function SectionCard({
             <GripVertical size={16} />
           </span>
 
-          <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
             {getSectionIcon(section.id)}
           </div>
 
           {!isEditingHeading ? (
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h3 className="font-extrabold text-sm sm:text-base text-neutral-900 tracking-tight truncate">
+            <div
+              className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer group/title"
+              onClick={() => setIsEditingHeading(true)}
+              title="Click to edit section title"
+            >
+              <h3 className="font-extrabold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 tracking-tight truncate">
                 {section.label}
               </h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditingHeading(true)}
-                className="h-6 px-2 text-[11px] font-semibold text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-md"
-              >
-                <Pencil size={11} className="mr-1" />
-                <span>Edit Heading</span>
-              </Button>
+              <Pencil size={12} className="text-neutral-400 dark:text-neutral-500 opacity-0 group-hover/title:opacity-100 group-hover/title:text-emerald-500 transition-all shrink-0" />
             </div>
           ) : (
             <div className="flex items-center gap-1.5 flex-1 max-w-xs">
               <Input
                 autoFocus
-                className="h-8 text-xs font-bold rounded-lg border-neutral-300 focus:border-emerald-500"
+                className="h-8 text-xs font-bold rounded-lg border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 focus:border-emerald-500"
                 value={section.label}
                 onChange={e => onRename(e.target.value)}
                 onKeyDown={e => {
@@ -148,7 +144,7 @@ export function SectionCard({
                 type="button"
                 size="icon-xs"
                 onClick={() => setIsEditingHeading(false)}
-                className="h-7 w-7 rounded-lg bg-neutral-900 text-white"
+                className="h-7 w-7 rounded-lg bg-neutral-900 dark:bg-emerald-600 text-white"
               >
                 <Check size={12} />
               </Button>
@@ -157,15 +153,15 @@ export function SectionCard({
         </div>
 
         {/* Right Section Actions (FlowCV Style) */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             onClick={() => setShowTypographyDrawer(prev => !prev)}
             title="Section typography, spacing & divider overrides"
-            className={`h-7 w-7 rounded-lg text-neutral-500 hover:text-neutral-900 ${
-              showTypographyDrawer ? 'bg-neutral-100 text-emerald-600' : ''
+            className={`h-7 w-7 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+              showTypographyDrawer ? 'bg-neutral-100 dark:bg-neutral-800 text-emerald-600 dark:text-emerald-400' : ''
             }`}
           >
             <Sliders size={13} />
@@ -177,8 +173,8 @@ export function SectionCard({
             size="icon-xs"
             title={section.visible ? 'Hide section from PDF' : 'Show section in PDF'}
             onClick={() => onToggleVisibility(!section.visible)}
-            className={`h-7 w-7 rounded-lg ${
-              section.visible ? 'text-neutral-500 hover:text-neutral-900' : 'text-amber-500 bg-amber-50'
+            className={`h-7 w-7 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+              section.visible ? 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100' : 'text-amber-500 bg-amber-50 dark:bg-amber-950/40'
             }`}
           >
             {section.visible ? <Eye size={13} /> : <EyeOff size={13} />}
@@ -190,7 +186,7 @@ export function SectionCard({
             size="icon-xs"
             title="Move section up"
             onClick={onMoveUp}
-            className="h-7 w-7 rounded-lg text-neutral-400 hover:text-neutral-900"
+            className="h-7 w-7 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <ChevronUp size={14} />
           </Button>
@@ -201,7 +197,7 @@ export function SectionCard({
             size="icon-xs"
             title="Move section down"
             onClick={onMoveDown}
-            className="h-7 w-7 rounded-lg text-neutral-400 hover:text-neutral-900"
+            className="h-7 w-7 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <ChevronDown size={14} />
           </Button>
@@ -212,10 +208,12 @@ export function SectionCard({
             size="icon-xs"
             title={`Delete section "${section.label}"`}
             onClick={onDeleteSection}
-            className="h-7 w-7 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50"
+            className="h-7 w-7 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
           >
             <Trash2 size={13} />
           </Button>
+
+          <div className="w-[1px] h-3.5 bg-neutral-200 dark:bg-neutral-700 mx-0.5" />
 
           <Button
             type="button"
@@ -223,7 +221,7 @@ export function SectionCard({
             size="icon-xs"
             title={isCollapsed ? 'Expand section' : 'Collapse section'}
             onClick={onToggleCollapse}
-            className="h-7 w-7 rounded-lg text-neutral-500 hover:text-neutral-900 ml-1"
+            className="h-7 w-7 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 ml-0.5"
           >
             {isCollapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
           </Button>
@@ -232,23 +230,25 @@ export function SectionCard({
 
       {/* 2. SECTION DESIGN & TYPOGRAPHY DRAWER */}
       {!isCollapsed && showTypographyDrawer && (
-        <div className="p-4 bg-neutral-50 border-b border-neutral-200 text-xs space-y-3">
-          <div className="font-bold text-neutral-800 flex items-center justify-between">
-            <span>Section Specific Typography, Spacing & Dividers</span>
-            <Button
+        <div className="p-4 bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700 text-xs space-y-3 animate-in fade-in">
+          <div className="font-bold text-neutral-800 dark:text-neutral-200 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs">
+              <Sliders size={13} className="text-emerald-500" />
+              <span>Section Specific Typography, Spacing & Dividers</span>
+            </span>
+            <button
               type="button"
-              variant="link"
-              size="sm"
               onClick={() => setShowTypographyDrawer(false)}
-              className="text-[11px] p-0 h-auto text-neutral-500"
+              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors"
+              title="Close drawer"
             >
-              Close Drawer ✕
-            </Button>
+              <X size={14} />
+            </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <label className="flex flex-col gap-1">
-              <span className="font-semibold text-neutral-600">Font Size · pt</span>
+              <span className="font-semibold text-neutral-600 dark:text-neutral-400">Font Size · pt</span>
               <Input
                 type="number"
                 min={8}
@@ -260,12 +260,12 @@ export function SectionCard({
                     fontSizePt: Math.max(8, Math.min(24, Number(e.target.value) || defaultFontSize)),
                   })
                 }
-                className="h-8 text-xs rounded-lg"
+                className="h-8 text-xs rounded-lg dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
               />
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="font-semibold text-neutral-600">Divider Weight · pt</span>
+              <span className="font-semibold text-neutral-600 dark:text-neutral-400">Divider Weight · pt</span>
               <Input
                 type="number"
                 min={0.1}
@@ -277,12 +277,12 @@ export function SectionCard({
                     dividerWeightPt: Math.max(0.1, Math.min(3, Number(e.target.value) || defaultDividerWeight)),
                   })
                 }
-                className="h-8 text-xs rounded-lg"
+                className="h-8 text-xs rounded-lg dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
               />
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="font-semibold text-neutral-600">Margin Above · pt</span>
+              <span className="font-semibold text-neutral-600 dark:text-neutral-400">Margin Above · pt</span>
               <Input
                 type="number"
                 min={0}
@@ -294,12 +294,12 @@ export function SectionCard({
                     marginTopPt: Math.max(0, Math.min(36, Number(e.target.value) || 0)),
                   })
                 }
-                className="h-8 text-xs rounded-lg"
+                className="h-8 text-xs rounded-lg dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
               />
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="font-semibold text-neutral-600">Margin Below · pt</span>
+              <span className="font-semibold text-neutral-600 dark:text-neutral-400">Margin Below · pt</span>
               <Input
                 type="number"
                 min={0}
@@ -311,13 +311,13 @@ export function SectionCard({
                     marginBottomPt: Math.max(0, Math.min(36, Number(e.target.value) || 0)),
                   })
                 }
-                className="h-8 text-xs rounded-lg"
+                className="h-8 text-xs rounded-lg dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
               />
             </label>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 pt-2">
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-neutral-700">
+            <label className="flex items-center gap-2 cursor-pointer font-semibold text-neutral-700 dark:text-neutral-300">
               <Switch
                 size="sm"
                 checked={section.design?.showDivider ?? defaultShowDividers}
@@ -326,7 +326,7 @@ export function SectionCard({
               <span>Divider Rule under Heading</span>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-neutral-700">
+            <label className="flex items-center gap-2 cursor-pointer font-semibold text-neutral-700 dark:text-neutral-300">
               <Switch
                 size="sm"
                 checked={Boolean(section.design?.pageBreakBefore)}
@@ -337,6 +337,7 @@ export function SectionCard({
           </div>
         </div>
       )}
+
 
       {/* 3. SECTION CONTENT ENTRIES */}
       {!isCollapsed && <CardContent className="p-4 sm:p-5 space-y-3">{children}</CardContent>}

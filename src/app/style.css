@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:where(.dark, .dark *));
 
 /* ==========================================================================
    RESUME STUDIO — Premium Design System & Theme Tokens
@@ -177,22 +177,24 @@ select option {
   height: 100vh;
   max-height: 100vh;
   display: flex;
+  flex-direction: column;
   background: var(--studio-bg);
   overflow: hidden;
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: 270px var(--editor-width, 540px) 10px minmax(400px, 1fr);
+  grid-template-columns: 270px var(--editor-width, 620px) 10px minmax(400px, 1fr);
   width: 100%;
-  height: 100%;
+  height: auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
   transition: grid-template-columns 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .workspace.library-collapsed {
-  grid-template-columns: 68px var(--editor-width, 540px) 10px minmax(400px, 1fr);
+  grid-template-columns: 60px var(--editor-width, 620px) 10px minmax(400px, 1fr);
 }
 
 .workspace.is-resizing {
@@ -811,6 +813,42 @@ select option {
   border-color: var(--studio-focus);
   outline: none;
   box-shadow: 0 0 0 2px rgba(70, 184, 130, 0.25);
+}
+
+.section-quick-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 0 2px;
+  scrollbar-width: none;
+}
+
+.section-quick-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.section-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--studio-muted);
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-line);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.section-chip:hover {
+  background: var(--studio-accent-subtle);
+  color: var(--studio-accent);
+  border-color: var(--studio-accent);
 }
 
 /* Editor Tabs (Content vs Design) */
@@ -3013,12 +3051,13 @@ select option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 58px;
+  height: 56px;
+  width: 100%;
+  flex: 0 0 56px;
   padding: 0 18px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
+  background: var(--studio-panel);
+  border-bottom: 1px solid var(--studio-line);
+  position: relative;
   z-index: 40;
   gap: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
@@ -3165,33 +3204,55 @@ select option {
 
 /* 2. FlowCV Cards & Collapsed Rows */
 .flowcv-card {
+  flex-shrink: 0 !important;
+  min-height: fit-content !important;
   border-radius: 16px !important;
-  background: var(--card) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--studio-panel) !important;
+  border: 1px solid var(--studio-line) !important;
+  color: var(--studio-text) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
   transition: all 0.2s ease;
 }
 
 .flowcv-card:hover {
-  border-color: var(--ring);
+  border-color: var(--studio-accent);
+}
+
+.profile-executive-card {
+  color: var(--studio-text) !important;
+}
+
+.profile-contact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-line);
+  color: var(--studio-text);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .entry-summary-row {
   border-radius: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--studio-panel);
+  border: 1px solid var(--studio-line);
+  color: var(--studio-text);
   transition: all 0.15s ease;
 }
 
 .entry-summary-row:hover {
-  border-color: var(--ring);
+  border-color: var(--studio-accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .preview-canvas-header {
   height: 48px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+  background: var(--studio-panel);
+  border-bottom: 1px solid var(--studio-line);
+  color: var(--studio-text);
 }
 
 
