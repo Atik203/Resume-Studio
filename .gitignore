@@ -10,3 +10,8 @@ build/
 !.env.example
 output/pdf/*.pdf
 config.bat
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+

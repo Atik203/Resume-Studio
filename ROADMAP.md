@@ -86,7 +86,14 @@
   - Page-balancing expansion strategy for underfilled documents.
   - Orphan Hunter detecting runaway single-word wraps with 1-click wordy filler trimmer.
   - Multi-page CV section break controls (`\clearpage\noindent `) in section customization drawer.
-- [x] **Comprehensive Test Suite**: 38 automated test cases covering LaTeX generation, escaping, page-fit optimization, orphan detection, and 4 Python ML tests.
+- [x] **Phase 4: Local Quantized Model / SLM Assist & Fine-Tuned Resume NER**:
+  - Integration with user's local `qwen3.5:4b` running on GPU via Ollama (`127.0.0.1:11434`) with zero cloud keys.
+  - Interactive bullet polish modal generating 3 high-impact variations (Quantified Impact, Action-First Leadership, Compact ATS).
+  - Before/after Google XYZ impact scores with delta badges and zero silent content loss.
+  - Custom NER fine-tuning and benchmark dataset generator (`train_ner.py`) with precision/recall evaluation.
+  - Categorized skill entity extraction API (`/api/extract-entities`).
+  - Seamless offline fallback when Ollama or Python service is inactive.
+- [x] **Comprehensive Test Suite**: 42 automated Vitest/Node test cases covering LaTeX generation, escaping, page-fit optimization, orphan detection, and 6 Python ML tests (100% passing).
 
 ---
 

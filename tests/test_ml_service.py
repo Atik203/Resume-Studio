@@ -11,6 +11,8 @@ from taxonomy import extract_skills
 from xyz_scorer import analyze_bullet, score_bullets_batch
 from matcher import match_resume_to_job
 from ats_simulator import simulate_ats_parse
+from ollama_client import check_ollama_status, polish_bullet_with_qwen, generate_rule_based_fallback
+from train_ner import generate_synthetic_dataset, evaluate_ner_performance
 
 
 def test_taxonomy_extraction():
@@ -96,9 +98,46 @@ def test_ats_simulator():
     print("[OK] ATS parser simulator passed.")
 
 
+def test_ollama_status_and_polishing():
+    status = check_ollama_status()
+    assert "online" in status, "Status must contain 'online' boolean"
+    assert "model_available" in status, "Status must indicate if model is installed"
+
+    # Test bullet polishing (works online with Ollama or falls back gracefully)
+    bullet = "Worked on fixing bugs and helped the team with tests."
+    res = polish_bullet_with_qwen(bullet, context={"title": "Software Engineer", "company": "Tech Corp"})
+    assert res["success"] is True, "Polishing should succeed via Ollama or fallback"
+    assert "variations" in res and res["variations"] is not None
+    assert "quantified" in res["variations"]
+    assert "action" in res["variations"]
+    assert "compact" in res["variations"]
+
+    # Verify rule-based fallback directly
+    fallback = generate_rule_based_fallback(bullet)
+    assert len(fallback["quantified"]) > 10
+    assert len(fallback["action"]) > 10
+    assert len(fallback["compact"]) > 10
+    print("[OK] Ollama client and bullet polishing passed.")
+
+
+def test_ner_dataset_and_evaluation():
+    data = generate_synthetic_dataset(num_samples=20, seed=123)
+    assert len(data) == 20, "Should generate 20 annotated samples"
+    assert "text" in data[0] and "ground_truth" in data[0]
+
+    metrics = evaluate_ner_performance(data)
+    assert metrics["total_samples"] == 20
+    assert metrics["precision"] > 0.0
+    assert metrics["recall"] > 0.0
+    print("[OK] NER dataset generator and evaluation benchmark passed.")
+
+
 if __name__ == "__main__":
     test_taxonomy_extraction()
     test_xyz_scoring()
     test_job_matching()
     test_ats_simulator()
+    test_ollama_status_and_polishing()
+    test_ner_dataset_and_evaluation()
     print("\nALL PYTHON ML TESTS PASSED SUCCESSFULLY!")
+

@@ -17,6 +17,7 @@ import {
   Zap,
   TrendingUp,
 } from 'lucide-react';
+import { BulletPolishModal } from './bullet-polish-modal';
 
 export interface EntryCardProps {
   entry: ContentEntry;
@@ -64,7 +65,18 @@ export function EntryCard({
     : '';
 
   const [expandedBulletIdx, setExpandedBulletIdx] = useState<number | null>(null);
+  const [polishingBullet, setPolishingBullet] = useState<{ text: string; index: number } | null>(null);
   const bulletScores = entry.bullets.map(b => analyzeBulletClient(b));
+
+  const handleApplyVariation = (bIdx: number, newText: string, mode: 'replace' | 'append') => {
+    const updated = [...entry.bullets];
+    if (mode === 'replace') {
+      updated[bIdx] = newText;
+    } else {
+      updated.splice(bIdx + 1, 0, newText);
+    }
+    onEdit({ bullets: updated });
+  };
 
   return (
     <div
@@ -275,6 +287,17 @@ export function EntryCard({
                           {analysis.score}/100
                         </span>
 
+                        {/* Qwen AI Polish Trigger */}
+                        <button
+                          type="button"
+                          className="xyz-polish-btn"
+                          title="Polish with local Qwen 3.5 4B AI"
+                          onClick={() => setPolishingBullet({ text: bullet, index: bIdx })}
+                        >
+                          <Sparkles size={11} className="text-emerald-400" />
+                          <span>Polish</span>
+                        </button>
+
                         {/* Suggestions toggle */}
                         {analysis.suggestions.length > 0 && (
                           <button
@@ -327,6 +350,18 @@ export function EntryCard({
           />
         </label>
       </div>
+
+      {polishingBullet && (
+        <BulletPolishModal
+          isOpen={true}
+          onClose={() => setPolishingBullet(null)}
+          bulletText={polishingBullet.text}
+          bulletIndex={polishingBullet.index}
+          entryTitle={entry.title}
+          entrySubtitle={entry.subtitle}
+          onApplyVariation={handleApplyVariation}
+        />
+      )}
     </div>
   );
 }

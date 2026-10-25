@@ -27,6 +27,9 @@ import {
   Sliders,
   Target,
   Sparkles,
+  Code2,
+  History,
+  FileArchive,
 } from 'lucide-react';
 
 import { Sidebar } from '@/components/studio/sidebar';
@@ -38,6 +41,9 @@ import { AtsPanel } from '@/components/studio/ats-panel';
 import { PageFitModal } from '@/components/studio/page-fit-modal';
 import { NewDraftModal } from '@/components/studio/new-draft-modal';
 import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
+import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
+import { SnapshotModal } from '@/components/studio/snapshot-modal';
+import { resolveVariant, type ResumeSnapshot } from '@/lib/data';
 
 const PREMADE_SECTIONS = [
   { id: 'experience', label: 'Work Experience', defaultTitle: 'Software Engineer', icon: '💼' },
@@ -82,6 +88,9 @@ export default function Studio() {
   const [showNewDraftModal, setShowNewDraftModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showPageFitModal, setShowPageFitModal] = useState(false);
+  const [showLatexInspectorModal, setShowLatexInspectorModal] = useState(false);
+  const [showSnapshotModal, setShowSnapshotModal] = useState(false);
+  const [exportingZip, setExportingZip] = useState(false);
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
   const dragX = useRef<number | null>(null);
 
@@ -92,6 +101,7 @@ export default function Studio() {
   const [dragOverEntryIndex, setDragOverEntryIndex] = useState<number | null>(null);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
+  const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
 
   useEffect(() => {
     Promise.resolve()
@@ -782,6 +792,56 @@ export default function Studio() {
     anchor.remove();
   }, [active.name, pdfFile, pdfUrl]);
 
+  const exportLatexZip = useCallback(async () => {
+    setExportingZip(true);
+    try {
+      const res = await fetch('/api/export-tex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project,
+          variantId: active.id,
+        }),
+      });
+      if (!res.ok) {
+        const errJson = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(errJson.error || `Export failed with HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = resolvedActive.profile.name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'Resume';
+      a.download = `${safeName}_latex_package.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to export LaTeX package');
+    } finally {
+      setExportingZip(false);
+    }
+  }, [active.id, resolvedActive.profile.name, project]);
+
+  const handleRestoreProject = useCallback((restoredProject: ProjectData) => {
+    setProject(restoredProject);
+  }, []);
+
+  const handleForkVariant = useCallback((snapshot: ResumeSnapshot) => {
+    const targetVariant =
+      snapshot.projectData.variants.find((v) => v.id === snapshot.variantId) ||
+      snapshot.projectData.variants[0];
+    const cloned = structuredClone(targetVariant);
+    cloned.id = `var_${Date.now()}`;
+    cloned.name = `${snapshot.name} (Fork)`;
+    setProject((prev) => ({
+      ...prev,
+      variants: [...prev.variants, cloned],
+      activeVariantId: cloned.id,
+    }));
+  }, []);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -1155,6 +1215,9 @@ export default function Studio() {
               onChangeDesignMode={setDesignMode}
               onUpdateVariant={updateVariant}
               onOpenPageFitModal={() => setShowPageFitModal(true)}
+              onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
+              onExportZip={exportLatexZip}
+              onOpenSnapshots={() => setShowSnapshotModal(true)}
             />
           ) : (
             /* ATS Matcher & Robot Simulator Tab */
@@ -1232,6 +1295,26 @@ export default function Studio() {
               <Button
                 variant="outline"
                 size="sm"
+                className="button secondary"
+                onClick={() => setShowLatexInspectorModal(true)}
+                title="Inspect generated LaTeX source and view template diffs"
+              >
+                <Code2 size={13} className="text-emerald-400" />
+                <span>LaTeX</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="button secondary"
+                onClick={() => setShowSnapshotModal(true)}
+                title="Browse and restore local IndexedDB checkpoints"
+              >
+                <History size={13} className="text-sky-400" />
+                <span>Snapshots</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 className={`button secondary page-fit-trigger-btn ${overflow ? 'is-overflow' : ''}`}
                 onClick={() => setShowPageFitModal(true)}
                 title="Intelligent spacing optimizer to fit target page without content loss"
@@ -1257,6 +1340,17 @@ export default function Studio() {
               >
                 <Download size={14} />
                 <span>Download PDF</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="button secondary"
+                onClick={exportLatexZip}
+                disabled={exportingZip}
+                title="Export complete standalone LaTeX package (.zip) for Overleaf / TeX Live"
+              >
+                <FileArchive size={13} className={exportingZip ? 'animate-spin' : 'text-amber-400'} />
+                <span>{exportingZip ? 'Packing…' : 'ZIP'}</span>
               </Button>
             </div>
           </div>
@@ -1371,6 +1465,24 @@ export default function Studio() {
           setMessage('Applied page-fit spacing optimizations.');
         }}
         onUpdateEntryBullet={updateEntryBullet}
+      />
+
+      {/* LATEX INSPECTOR & DIFF MODAL */}
+      <LatexInspectorModal
+        isOpen={showLatexInspectorModal}
+        onClose={() => setShowLatexInspectorModal(false)}
+        activeVariant={resolvedActive}
+        onExportZip={exportLatexZip}
+      />
+
+      {/* SNAPSHOT TIME MACHINE MODAL */}
+      <SnapshotModal
+        isOpen={showSnapshotModal}
+        onClose={() => setShowSnapshotModal(false)}
+        project={project}
+        activeVariant={resolvedActive}
+        onRestoreProject={handleRestoreProject}
+        onForkVariant={handleForkVariant}
       />
     </main>
   );

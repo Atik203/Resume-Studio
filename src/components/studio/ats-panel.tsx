@@ -142,8 +142,13 @@ export function AtsPanel({
             </span>
           </div>
           {health.status === 'online' ? (
-            <span className="text-xs text-muted-foreground">
-              {health.skills_in_taxonomy} Tech Skills Loaded · 100% Private Loopback
+            <span className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+              <span>{health.skills_in_taxonomy} Tech Skills Loaded</span>
+              {health.ollama?.online && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 font-semibold">
+                  ⚡ Qwen 3.5 4B Active
+                </span>
+              )}
             </span>
           ) : (
             <div className="flex items-center gap-2">

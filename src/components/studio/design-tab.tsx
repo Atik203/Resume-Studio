@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { designPresets, getDesignPreset, type DesignPresetId } from '@/lib/design-presets';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight, Code2, FileArchive, History, ShieldCheck } from 'lucide-react';
 
 export interface DesignTabProps {
   active: ResumeVariant;
@@ -20,6 +20,9 @@ export interface DesignTabProps {
   onChangeDesignMode: (mode: 'quick' | 'advanced') => void;
   onUpdateVariant: (updater: (v: ResumeVariant) => ResumeVariant) => void;
   onOpenPageFitModal?: () => void;
+  onOpenLatexInspector?: () => void;
+  onExportZip?: () => void;
+  onOpenSnapshots?: () => void;
 }
 
 const templates: { id: TemplateId; name: string; description: string }[] = [
@@ -45,6 +48,9 @@ export function DesignTab({
   onChangeDesignMode,
   onUpdateVariant,
   onOpenPageFitModal,
+  onOpenLatexInspector,
+  onExportZip,
+  onOpenSnapshots,
 }: DesignTabProps) {
   return (
     <div className={`editor-content design-content ${designMode}`}>
@@ -115,6 +121,52 @@ export function DesignTab({
           </button>
         </div>
       )}
+
+      {/* Phase 5: Deep LaTeX Developer Tools & Ecosystem Bar */}
+      <div className="latex-dev-tools-banner">
+        <div className="flex items-center gap-2">
+          <Code2 size={16} className="text-emerald-400" />
+          <div className="flex flex-col">
+            <span className="font-bold text-xs text-white">LaTeX Developer Tools & Portable Export</span>
+            <span className="text-[11px] text-[#8ba393]">Inspect .tex markup, download Overleaf package, or browse checkpoints</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {onOpenLatexInspector && (
+            <button
+              type="button"
+              className="latex-tool-btn"
+              onClick={onOpenLatexInspector}
+              title="Inspect raw LaTeX markup and view template diffs"
+            >
+              <Code2 size={12} />
+              <span>Inspect Source</span>
+            </button>
+          )}
+          {onExportZip && (
+            <button
+              type="button"
+              className="latex-tool-btn"
+              onClick={onExportZip}
+              title="Download standalone .zip package with main.tex and assets"
+            >
+              <FileArchive size={12} />
+              <span>Export .zip</span>
+            </button>
+          )}
+          {onOpenSnapshots && (
+            <button
+              type="button"
+              className="latex-tool-btn"
+              onClick={onOpenSnapshots}
+              title="Browse and restore local IndexedDB checkpoints"
+            >
+              <History size={12} />
+              <span>Time Machine</span>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Design Presets */}
       <div className="preset-grid">
@@ -567,6 +619,28 @@ export function DesignTab({
                 />
               </label>
             ))}
+
+            {/* PDF/A Archival Toggle */}
+            <label className="setting-toggle">
+              <div className="flex flex-col">
+                <span className="font-semibold text-white flex items-center gap-1.5">
+                  <ShieldCheck size={13} className="text-emerald-400" />
+                  <span>PDF/A Archival Metadata</span>
+                </span>
+                <span className="text-[10.5px] text-muted-foreground">
+                  Injects ISO 19005-1 preservation metadata into compiled PDF
+                </span>
+              </div>
+              <Switch
+                checked={Boolean(active.design.pdfaCompliant)}
+                onCheckedChange={checked =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: { ...v.design, pdfaCompliant: checked },
+                  }))
+                }
+              />
+            </label>
           </div>
         </CardContent>
       </Card>
