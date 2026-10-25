@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Sliders,
   Target,
+  Sparkles,
 } from 'lucide-react';
 
 import { Sidebar } from '@/components/studio/sidebar';
@@ -34,6 +35,7 @@ import { SectionCard } from '@/components/studio/section-card';
 import { EntryCard } from '@/components/studio/entry-card';
 import { DesignTab } from '@/components/studio/design-tab';
 import { AtsPanel } from '@/components/studio/ats-panel';
+import { PageFitModal } from '@/components/studio/page-fit-modal';
 import { NewDraftModal } from '@/components/studio/new-draft-modal';
 import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 
@@ -79,6 +81,7 @@ export default function Studio() {
   const [collapsedSections, setCollapsedSections] = useState<Record<string, string[]>>({});
   const [showNewDraftModal, setShowNewDraftModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showPageFitModal, setShowPageFitModal] = useState(false);
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
   const dragX = useRef<number | null>(null);
 
@@ -410,6 +413,19 @@ export default function Studio() {
       };
     });
     setMessage(`Added "${skillName}" to technical skills.`);
+  }
+
+  function updateEntryBullet(entryId: string, bulletIndex: number, newText: string) {
+    updateProject(p => {
+      const newEntries = p.library.entries.map(e => {
+        if (e.id !== entryId) return e;
+        const newBullets = [...e.bullets];
+        newBullets[bulletIndex] = newText;
+        return { ...e, bullets: newBullets };
+      });
+      return { ...p, library: { ...p.library, entries: newEntries } };
+    });
+    setMessage('Applied orphan trim to bullet point.');
   }
 
   function sectionIsCollapsed(sectionId: string) {
@@ -1138,6 +1154,7 @@ export default function Studio() {
               designMode={designMode}
               onChangeDesignMode={setDesignMode}
               onUpdateVariant={updateVariant}
+              onOpenPageFitModal={() => setShowPageFitModal(true)}
             />
           ) : (
             /* ATS Matcher & Robot Simulator Tab */
@@ -1213,6 +1230,16 @@ export default function Studio() {
 
             <div className="preview-actions">
               <Button
+                variant="outline"
+                size="sm"
+                className={`button secondary page-fit-trigger-btn ${overflow ? 'is-overflow' : ''}`}
+                onClick={() => setShowPageFitModal(true)}
+                title="Intelligent spacing optimizer to fit target page without content loss"
+              >
+                <Sparkles size={13} className="text-primary" />
+                <span>{overflow ? 'Auto-Fit to 1 Page' : 'Page-Fit Assistant'}</span>
+              </Button>
+              <Button
                 className="button primary"
                 onClick={compile}
                 disabled={busy}
@@ -1237,10 +1264,21 @@ export default function Studio() {
           {/* Overflow Alert */}
           {overflow && (
             <Alert className="warning">
-              <AlertTitle>Target page limit exceeded</AlertTitle>
-              <AlertDescription>
-                This draft exceeds its {active.targetPages}-page limit. All content is preserved in the
-                compiled PDF. Adjust font size, margins, or entry bullets to fit.
+              <AlertTitle className="flex items-center justify-between">
+                <span>Target page limit exceeded ({pageCount}/{active.targetPages} pages)</span>
+                <Button
+                  variant="default"
+                  size="icon-xs"
+                  className="h-6 px-2 text-[11px] gap-1 shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => setShowPageFitModal(true)}
+                >
+                  <Sparkles size={11} />
+                  <span>Fit to 1 Page</span>
+                </Button>
+              </AlertTitle>
+              <AlertDescription className="text-xs">
+                This draft spills onto Page {pageCount}. All content is preserved in the compiled PDF.
+                Click <strong>Fit to 1 Page</strong> to mathematically micro-tune spacing with zero text loss.
               </AlertDescription>
             </Alert>
           )}
@@ -1319,6 +1357,20 @@ export default function Studio() {
           setShowPhotoModal(false);
           setMessage('Profile photo updated.');
         }}
+      />
+
+      {/* PAGE-FIT ASSISTANT MODAL */}
+      <PageFitModal
+        isOpen={showPageFitModal}
+        onClose={() => setShowPageFitModal(false)}
+        activeVariant={active}
+        project={project}
+        isOverflowing={overflow}
+        onApplyDesign={updatedDesign => {
+          updateVariant(v => ({ ...v, design: updatedDesign }));
+          setMessage('Applied page-fit spacing optimizations.');
+        }}
+        onUpdateEntryBullet={updateEntryBullet}
       />
     </main>
   );
