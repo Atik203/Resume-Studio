@@ -25,6 +25,7 @@ import {
   Plus,
   RefreshCw,
   Sliders,
+  Target,
 } from 'lucide-react';
 
 import { Sidebar } from '@/components/studio/sidebar';
@@ -32,6 +33,7 @@ import { ProfileCard } from '@/components/studio/profile-card';
 import { SectionCard } from '@/components/studio/section-card';
 import { EntryCard } from '@/components/studio/entry-card';
 import { DesignTab } from '@/components/studio/design-tab';
+import { AtsPanel } from '@/components/studio/ats-panel';
 import { NewDraftModal } from '@/components/studio/new-draft-modal';
 import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 
@@ -67,7 +69,7 @@ export default function Studio() {
   const compileRequestId = useRef(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [activePane, setActivePane] = useState<'editor' | 'design'>('editor');
+  const [activePane, setActivePane] = useState<'editor' | 'design' | 'ats'>('editor');
   const [designMode, setDesignMode] = useState<'quick' | 'advanced'>('quick');
   const [preferences, setPreferences] = useState<UiPreferences>(defaultUiPreferences);
   const [editorWidth, setEditorWidth] = useState(540);
@@ -339,6 +341,75 @@ export default function Studio() {
       selectedEntryIds: v.selectedEntryIds.filter(id => !entryIdsToRemove.has(id)),
     }));
     setMessage(`Removed section "${sectionLabel}".`);
+  }
+
+  function addSkillToResume(skillName: string) {
+    updateProject(p => {
+      const activeVar = p.variants.find(v => v.id === p.activeVariantId) ?? p.variants[0];
+      let skillsSection = activeVar.sections.find(
+        s => s.id === 'skills' || s.label.toLowerCase().includes('skill')
+      );
+
+      const newEntries = [...p.library.entries];
+      const newVariants = p.variants.map(v => {
+        if (v.id !== p.activeVariantId) return v;
+        const nextVar = structuredClone(v);
+
+        if (!skillsSection) {
+          skillsSection = {
+            id: 'skills',
+            label: 'Technical Skills',
+            visible: true,
+            entryIds: [],
+          };
+          nextVar.sections.push(skillsSection);
+        } else {
+          const s = nextVar.sections.find(sec => sec.id === skillsSection!.id);
+          if (s) s.visible = true;
+        }
+
+        const existingEntryId = skillsSection.entryIds[0];
+        const targetEntry = existingEntryId ? newEntries.find(e => e.id === existingEntryId) : null;
+
+        if (!targetEntry) {
+          const newId = `entry-${Date.now()}`;
+          const newEntry: ContentEntry = {
+            id: newId,
+            sectionId: skillsSection.id,
+            title: 'Key Competencies & Tools',
+            subtitle: '',
+            date: '',
+            location: '',
+            description: '',
+            bullets: [],
+            technologies: [skillName],
+            links: [],
+          };
+          newEntries.push(newEntry);
+          const s = nextVar.sections.find(sec => sec.id === skillsSection!.id);
+          if (s) s.entryIds.push(newId);
+          nextVar.selectedEntryIds.push(newId);
+        } else {
+          const curTechs = targetEntry.technologies || [];
+          if (!curTechs.some(t => t.toLowerCase() === skillName.toLowerCase())) {
+            const updated = {
+              ...targetEntry,
+              technologies: [...curTechs, skillName],
+            };
+            const idx = newEntries.findIndex(e => e.id === targetEntry.id);
+            if (idx >= 0) newEntries[idx] = updated;
+          }
+        }
+        return nextVar;
+      });
+
+      return {
+        ...p,
+        library: { ...p.library, entries: newEntries },
+        variants: newVariants,
+      };
+    });
+    setMessage(`Added "${skillName}" to technical skills.`);
   }
 
   function sectionIsCollapsed(sectionId: string) {
@@ -845,7 +916,7 @@ export default function Studio() {
               </div>
             </div>
 
-            {/* Mode Switch Tabs (Editor vs Design) */}
+            {/* Mode Switch Tabs (Editor vs Design vs ATS) */}
             <div className="editor-mode-tabs" role="tablist">
               <button
                 type="button"
@@ -866,6 +937,16 @@ export default function Studio() {
               >
                 <Sliders size={14} />
                 <span>Design</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePane === 'ats'}
+                className={`editor-mode-tab ${activePane === 'ats' ? 'active' : ''}`}
+                onClick={() => setActivePane('ats')}
+              >
+                <Target size={14} />
+                <span>ATS Matcher</span>
               </button>
             </div>
           </div>
@@ -1050,13 +1131,20 @@ export default function Studio() {
                 )}
               </div>
             </div>
-          ) : (
+          ) : activePane === 'design' ? (
             /* Design Tab */
             <DesignTab
               active={active}
               designMode={designMode}
               onChangeDesignMode={setDesignMode}
               onUpdateVariant={updateVariant}
+            />
+          ) : (
+            /* ATS Matcher & Robot Simulator Tab */
+            <AtsPanel
+              project={project}
+              activeVariant={active}
+              onAddSkillToResume={addSkillToResume}
             />
           )}
         </section>

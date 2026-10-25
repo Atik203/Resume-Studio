@@ -1,14 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { ContentEntry } from '@/lib/data';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { analyzeBulletClient } from '@/lib/bullet-analyzer';
 import {
   Bold,
   GripVertical,
   Italic,
   Link as LinkIcon,
   Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  Zap,
+  TrendingUp,
 } from 'lucide-react';
 
 export interface EntryCardProps {
@@ -55,6 +62,9 @@ export function EntryCard({
     : dragOverDirection === 'top'
     ? 'is-drag-over-top'
     : '';
+
+  const [expandedBulletIdx, setExpandedBulletIdx] = useState<number | null>(null);
+  const bulletScores = entry.bullets.map(b => analyzeBulletClient(b));
 
   return (
     <div
@@ -179,6 +189,123 @@ export function EntryCard({
             placeholder="Key accomplishment&#10;Quantifiable impact or project detail"
             onChange={e => onEdit({ bullets: e.target.value.split('\n') })}
           />
+
+          {/* Google XYZ Live Impact Scores */}
+          {entry.bullets.some(b => b.trim().length > 0) && (
+            <div className="bullet-xyz-container">
+              <div className="bullet-xyz-header">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground/80">
+                  <TrendingUp size={12} className="text-primary" />
+                  <span>Google XYZ Impact Telemetry (Accomplished [X] measured by [Y] via [Z])</span>
+                </div>
+              </div>
+              <div className="bullet-xyz-list">
+                {entry.bullets.map((bullet, bIdx) => {
+                  if (!bullet.trim()) return null;
+                  const analysis = bulletScores[bIdx];
+                  const isExpanded = expandedBulletIdx === bIdx;
+
+                  return (
+                    <div key={bIdx} className="bullet-xyz-item">
+                      <div className="bullet-xyz-preview">
+                        <span className="bullet-xyz-dot">•</span>
+                        <span className="bullet-xyz-text" title={bullet}>
+                          {bullet}
+                        </span>
+                      </div>
+
+                      <div className="bullet-xyz-badges">
+                        {/* Verb Strength */}
+                        <span
+                          className={`xyz-badge ${
+                            analysis.verbStrength === 'strong'
+                              ? 'xyz-badge-strong'
+                              : analysis.verbStrength === 'weak'
+                              ? 'xyz-badge-weak'
+                              : 'xyz-badge-moderate'
+                          }`}
+                          title={`Verb: ${analysis.firstVerb}`}
+                        >
+                          {analysis.verbStrength === 'strong' ? (
+                            <CheckCircle2 size={10} />
+                          ) : analysis.verbStrength === 'weak' ? (
+                            <AlertTriangle size={10} />
+                          ) : (
+                            <Zap size={10} />
+                          )}
+                          <span>{analysis.firstVerb ? `Verb: ${analysis.firstVerb}` : 'No Verb'}</span>
+                        </span>
+
+                        {/* Metrics Badge */}
+                        <span
+                          className={`xyz-badge ${
+                            analysis.hasMetrics ? 'xyz-badge-metric' : 'xyz-badge-missing'
+                          }`}
+                          title={
+                            analysis.hasMetrics
+                              ? `Metric: ${analysis.metricSnippets.join(', ')}`
+                              : 'No quantifiable metric detected'
+                          }
+                        >
+                          {analysis.hasMetrics
+                            ? '📊 ' + analysis.metricSnippets[0]
+                            : '⚠️ Missing Metric'}
+                        </span>
+
+                        {/* Methodology Badge */}
+                        {analysis.hasMethodology && (
+                          <span
+                            className="xyz-badge xyz-badge-method"
+                            title="Methodology / Tooling indicator present"
+                          >
+                            ⚙️ Method
+                          </span>
+                        )}
+
+                        {/* Score Pill */}
+                        <span
+                          className={`xyz-score-pill ${
+                            analysis.score >= 80
+                              ? 'xyz-score-high'
+                              : analysis.score >= 50
+                              ? 'xyz-score-mid'
+                              : 'xyz-score-low'
+                          }`}
+                        >
+                          {analysis.score}/100
+                        </span>
+
+                        {/* Suggestions toggle */}
+                        {analysis.suggestions.length > 0 && (
+                          <button
+                            type="button"
+                            className="xyz-suggestions-toggle"
+                            onClick={() => setExpandedBulletIdx(isExpanded ? null : bIdx)}
+                          >
+                            <HelpCircle size={11} />
+                            <span>{isExpanded ? 'Hide' : 'Tips'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Expanded suggestions */}
+                      {isExpanded && analysis.suggestions.length > 0 && (
+                        <div className="bullet-suggestions-box">
+                          {analysis.suggestions.map((sug, sIdx) => (
+                            <div key={sIdx} className="bullet-suggestion-row">
+                              <span className="text-amber-500 font-bold shrink-0">💡</span>
+                              <span>{sug}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="bullet-helper">
             <Sparkles size={13} className="text-primary shrink-0" />
             <span>Supports **bold**, *italic*, and [links](https://) in compiled PDF.</span>
