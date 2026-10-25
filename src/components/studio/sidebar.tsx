@@ -3,7 +3,6 @@
 import React from 'react';
 import { ProjectData } from '@/lib/data';
 import { UiPreferences } from '@/lib/ui-preferences';
-import { Button } from '@/components/ui/button';
 import {
   ChevronLeft,
   ChevronRight,
@@ -60,7 +59,12 @@ export function Sidebar({
     >
       {/* Brand Header */}
       <div className="sidebar-header">
-        <div className="sidebar-brand">
+        <div
+          className="sidebar-brand"
+          onClick={collapsed ? onToggleCollapse : undefined}
+          title={collapsed ? 'Click to expand sidebar' : undefined}
+          style={{ cursor: collapsed ? 'pointer' : 'default' }}
+        >
           <div className="brand-mark">
             <FileText size={16} />
           </div>
@@ -109,48 +113,59 @@ export function Sidebar({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => onSelectVariant(variant.id)}
-                title={collapsed ? `${variant.name} (${variant.mode.toUpperCase()})` : undefined}
+                title={`${variant.name} (${variant.mode === 'cv' ? 'Curriculum Vitae' : 'Resume'} · ${variant.targetPages} ${variant.targetPages === 1 ? 'Page' : 'Pages'})`}
               >
-                <div className="draft-item-top">
-                  <span className={`doc-mode-badge ${variant.mode}`}>
-                    {variant.mode === 'cv' ? 'CV' : 'RES'}
-                  </span>
-                  <span className="draft-page-target">
-                    {variant.targetPages} {variant.targetPages === 1 ? 'Page' : 'Pages'}
-                  </span>
-                </div>
-                <div className="draft-item-title-row">
-                  <input
-                    className="draft-name-input"
-                    value={variant.name}
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => onRenameVariant(variant.id, e.target.value)}
-                    placeholder="Draft name"
-                    aria-label={`Name for draft ${variant.name}`}
-                  />
-                  <div className="draft-item-actions" onClick={e => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="draft-action-btn"
-                      title="Duplicate draft (Make a copy)"
-                      aria-label={`Duplicate draft ${variant.name}`}
-                      onClick={() => onDuplicateVariant(variant.id)}
-                    >
-                      <Copy size={12} />
-                    </button>
-                    {project.variants.length > 1 && (
-                      <button
-                        type="button"
-                        className="draft-action-btn delete"
-                        title="Delete draft"
-                        aria-label={`Delete draft ${variant.name}`}
-                        onClick={() => onDeleteVariant(variant.id)}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
+                {collapsed ? (
+                  <div className="collapsed-draft-card">
+                    <span className={`doc-mode-badge ${variant.mode}`}>
+                      {variant.mode === 'cv' ? 'CV' : 'RES'}
+                    </span>
+                    <span className="collapsed-pages-dot">{variant.targetPages}p</span>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="draft-item-top">
+                      <span className={`doc-mode-badge ${variant.mode}`}>
+                        {variant.mode === 'cv' ? 'CV' : 'RES'}
+                      </span>
+                      <span className="draft-page-target">
+                        {variant.targetPages} {variant.targetPages === 1 ? 'Page' : 'Pages'}
+                      </span>
+                    </div>
+                    <div className="draft-item-title-row">
+                      <input
+                        className="draft-name-input"
+                        value={variant.name}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => onRenameVariant(variant.id, e.target.value)}
+                        placeholder="Draft name"
+                        aria-label={`Name for draft ${variant.name}`}
+                      />
+                      <div className="draft-item-actions" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="draft-action-btn"
+                          title="Duplicate draft (Make a copy)"
+                          aria-label={`Duplicate draft ${variant.name}`}
+                          onClick={() => onDuplicateVariant(variant.id)}
+                        >
+                          <Copy size={12} />
+                        </button>
+                        {project.variants.length > 1 && (
+                          <button
+                            type="button"
+                            className="draft-action-btn delete"
+                            title="Delete draft"
+                            aria-label={`Delete draft ${variant.name}`}
+                            onClick={() => onDeleteVariant(variant.id)}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -195,27 +210,34 @@ export function Sidebar({
 
         {/* Backup actions */}
         <div className="sidebar-footer-actions">
-          <Button
-            variant="outline"
-            size="sm"
-            className="button secondary"
+          <button
+            type="button"
+            className="sidebar-footer-btn"
             onClick={onExportBackup}
             title="Export JSON backup of all drafts and master content"
+            aria-label="Export JSON backup"
           >
             <Download size={13} />
-            <span>Export Backup</span>
-          </Button>
-          <label className="button secondary file-button" title="Import JSON backup file">
+            {!collapsed && <span>Export Backup</span>}
+          </button>
+          <label
+            className="sidebar-footer-btn file-button"
+            title="Import JSON backup file"
+            aria-label="Import JSON backup"
+          >
             <Upload size={13} />
-            <span>Import</span>
+            {!collapsed && <span>Import</span>}
             <input type="file" accept="application/json,.json" onChange={onImportBackup} />
           </label>
         </div>
 
         {/* Local Engine Status */}
-        <div className="engine-status">
+        <div
+          className="engine-status"
+          title="Compiled locally with TeX Live pdflatex (verified & 100% offline)"
+        >
           <span className="engine-status-dot" aria-hidden="true" />
-          <span>Local TeX Live pdflatex</span>
+          {!collapsed && <span>Local TeX Live pdflatex</span>}
         </div>
       </div>
     </aside>

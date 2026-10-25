@@ -7,6 +7,6 @@ out/
 build/
 *.log
 *.tsbuildinfo
-.env*
 !.env.example
 output/pdf/*.pdf
+config.bat
