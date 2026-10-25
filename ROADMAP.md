@@ -1,290 +1,292 @@
-# Resume Studio — Roadmap
-
-## 1. Product brief
-
-Build a local-first resume/CV studio for personal use on Windows. The user likes FlowCV's simple, professional, minimal templates and wants full control over content, layout settings, document variants, and PDF compilation. The user has TeX Live installed locally and wants all PDFs compiled with local `pdflatex`.
-
-### Success criteria
-
-- Match the general layout and spacing of the one-page reference PDF before designing additional templates.
-- Produce selectable-text PDFs using local TeX Live `pdflatex`.
-- Support five minimal templates and both short resume and longer CV workflows.
-- Maintain one reusable master content library and multiple independent variants.
-- Keep all profile data and photos local, with a robust export/restore workflow.
-- Never silently drop content to satisfy page limits.
-
-## 2. Scope
-
-### V1 must include
-
-- Local web app, no mandatory login or external APIs.
-- Master profile/content library and named resume/CV variants.
-- Five templates:
-  1. Simple ATS (primary, FlowCV-like one-page design)
-  2. Clean Compact
-  3. Modern Developer
-  4. Academic CV
-  5. Profile CV with optional photo
-- Editable standard sections and user-defined custom sections.
-- Section/entry visibility, ordering, addition, deletion, and duplication.
-- Template-level and global design settings.
-- Local `pdflatex` compilation, real PDF preview, and verified PDF export.
-- IndexedDB autosave and JSON/ZIP backup/import.
-- Clear compile errors, page overflow messages, and validation.
-- Synthetic test fixtures; never commit the user's personal resume data.
-
-### Explicitly out of scope for V1
-
-- Authentication or user accounts.
-- Cloud database, cloud rendering, synchronization, collaboration, public sharing.
-- Billing or subscription management.
-- Mandatory LLM/AI integration.
-- Arbitrary user-supplied TeX execution through the UI.
-- Public production deployment.
-
-## 3. Reference-PDF review (Phase 0)
-
-The user will attach two reference PDFs to Codex. Before coding:
-
-1. Locate both PDF files in the workspace or attachment mount.
-2. Determine which PDF is the one-page FlowCV-like developer resume and which is the academic/longer CV.
-3. Inspect every page visually. Text extraction alone is insufficient because spacing, alignment, font hierarchy, separators, page breaks, and the portrait/layout treatment matter.
-4. Record a compact design specification: page size, margins, name/title alignment, contact row, section headings, date alignment, bullet indentation, divider thickness/color, fonts, and vertical spacing.
-5. Use the one-page PDF as the pixel/layout reference for Template 1. Use the second CV to guide section structure and longer-document behavior.
-6. Do not change the source PDFs. Keep them as read-only references.
-
-Deliverable: `docs/reference-design-notes.md` with observations and any visual ambiguities.
-
-## 4. Proposed architecture
-
-### Frontend
-
-- Next.js App Router + TypeScript if the repository is empty; otherwise preserve the existing stack if sensible.
-- Tailwind CSS; shadcn/ui only where it provides useful primitives.
-- React Hook Form + Zod for complex forms and validation, if appropriate.
-- PDF.js or an equivalent local viewer to show the actual output PDF.
-
-### Data and persistence
-
-- IndexedDB stores profile data, content entities, resume variants, settings, and photo blobs.
-- Small UI preferences may use LocalStorage.
-- Data schema is versioned and validated.
-- JSON/ZIP backup contains profile/library, variants, settings, and image assets.
-- Import shows a preview/validation result and never silently overwrites current content.
-
-### Rendering
-
-- Author templates as controlled `.tex` files with shared LaTeX macros/utilities.
-- Run `pdflatex` on the same computer through a Node.js runtime route/service. The browser must not try to execute it directly.
-- Resolve executable from `PDFLATEX_PATH` if configured, otherwise `pdflatex` on `PATH`.
-- Use `spawn`/`execFile` with fixed arguments and `shell: false`; no shell interpolation.
-- Compile with non-interactive, halt-on-error, file-line-error, and no-shell-escape flags. Use unique temporary directories, a timeout, bounded logs, output verification, and cleanup.
-- Escape user-provided text before it reaches LaTeX. Templates, not imported resume content, are allowed to define LaTeX commands.
-- PDF preview and export must use the same compiled PDF output; do not create a separate browser-only imitation of the template.
-
-### Local-only constraints
-
-- No remote services or mandatory API keys.
-- No telemetry or analytics.
-- Default to loopback-only local development.
-- No user resume data in source control.
-
-## 5. Data model outline
-
-Use a versioned schema with stable IDs. Exact interface definitions should be refined after inspection, but should cover:
-
-- `Profile`: identity/contact details, links, default preferences.
-- `EducationEntry`: institution, qualification, dates, location, GPA/CGPA, descriptions, bullets.
-- `ExperienceEntry`: organization, role, employment type, location, dates, bullets.
-- `ProjectEntry`: name, tagline/description, bullets, technologies, live URL, source URL.
-- `SkillGroup`: label, ordered skills.
-- `AwardEntry`, `CertificateEntry`, `PublicationEntry`, `CourseEntry`, `LanguageEntry`.
-- `CustomSection`: user-defined heading and entries.
-- `ContentLibrary`: the canonical reusable entries.
-- `ResumeVariant`: ID/name, document type (`resume` or `cv`), template ID, selected content IDs, section order/visibility, variant-specific overrides, layout settings, page policy, optional photo reference.
-- `AppSettings`: theme/editor preferences, `pdflatex` executable override, default paper size and default typography settings.
-
-Variant content must not accidentally mutate the master library. A variant should select master entries by ID and store any local override explicitly.
-
-## 6. Template specifications
-
-### T1 — Simple ATS (build first)
-
-- Primary visual target: first uploaded one-page developer resume.
-- Single column, monochrome or near-monochrome.
-- Clear name and job-title hierarchy, compact contact details, readable section headings, restrained divider lines, right-aligned dates where appropriate, conventional bullets.
-- No photo, charts, icons as content substitutes, tables for main page layout, or decorative sidebars.
-- One-page resume default. Must pass PDF text-order checks.
-
-### T2 — Clean Compact
-
-- Left-aligned heading and single-column content.
-- Slightly denser spacing while keeping a configurable minimum font size.
-- Best for concise project-heavy applications.
-
-### T3 — Modern Developer
-
-- Single column with one configurable, restrained accent color.
-- Clear technical skill categories, project names, role/date alignment, and technology summaries.
-- Avoid skill bars, rating dots, or decorative graphics that are difficult for ATS parsers.
-
-### T4 — Academic CV
-
-- Traditional, text-first structure with flexible sections for research interests, education, experience, projects, publications, coursework, teaching, awards, certificates, and languages.
-- Two-page default, maximum three pages by default.
-- Repeated header/page numbers may be configurable.
-- Keep headings attached to following content when possible.
-
-### T5 — Profile CV
-
-- Minimal CV with optional portrait in the header.
-- Balanced layout when photo is absent.
-- Photo is optional, local, size/type validated, and never automatically added to T1–T4.
-- Use formats supported by `pdflatex` (PNG/JPEG/PDF as appropriate); reject or explicitly convert WebP rather than producing a broken PDF.
-
-## 7. Page and layout rules
-
-- Resume: default one page, maximum one page unless the user explicitly changes the rule.
-- CV: default two pages, maximum three pages by default.
-- Default paper size: A4; optionally support US Letter.
-- All font/margin/spacing settings should have safe defaults and validation bounds.
-- Do not silently shrink font, remove bullets, hide sections, or truncate wording.
-- Detect page overflow using a robust approach. If the engine cannot reliably predict overflow before compilation, compile the PDF and inspect actual page count plus template/page-policy metadata.
-- Provide actionable overflow suggestions: shorten a selected bullet, hide an item, adjust section order, use the compact template, or modify spacing/font settings.
-- Do not block exporting an over-limit CV without telling the user why; the user can explicitly override a warning if appropriate.
-
-## 8. Implementation phases
-
-### Phase 0 — Inspect references and environment
-
-- Inspect repository and toolchain.
-- Find and visually inspect the two PDFs.
-- Check local `pdflatex` availability.
-- Write `docs/reference-design-notes.md` and `docs/architecture.md`.
-- Do not install an alternative PDF renderer.
-
-**Exit criteria:** a written visual spec and verified local compilation capability (or a precise documented PATH/configuration blocker).
-
-### Phase 1 — Schema and persistence foundation
-
-- Define versioned Zod/TypeScript schemas.
-- Implement IDs, content library, variant selection and local overrides.
-- Add IndexedDB persistence and autosave status.
-- Add import/export schema and round-trip tests.
-- Use synthetic fixture data in tests.
-
-**Exit criteria:** create/edit/reload a profile and multiple variants without losing or cross-mutating data.
-
-### Phase 2 — First vertical slice: T1 + pdflatex
-
-- Implement shared LaTeX escaping and safe URL handling.
-- Build the simple ATS `.tex` template from the reference notes.
-- Implement local Node compile route/service using `pdflatex`.
-- Verify PDF exit status, existence, non-empty output, timeout, and errors.
-- Add a basic preview/download flow.
-- Compare the generated PDF visually with the original reference and iterate on layout.
-
-**Exit criteria:** realistic synthetic content compiles locally; special characters work; PDF text is selectable; links are clickable; no remote service is used.
-
-### Phase 3 — Editor and variant UX
-
-- Implement profile/content editing, add/remove entries, bullet editing, section order/visibility, duplicate variant, and template selector.
-- Use the actual compiled PDF as the preview.
-- Debounce preview requests and prevent stale compile responses from replacing the latest preview.
-- Provide explicit Export PDF and saved-status indicators.
-
-**Exit criteria:** edit → preview → export works end-to-end and reload restores data.
-
-### Phase 4 — Templates T2–T5
-
-- Add templates incrementally and validate output after each one.
-- Add optional photo support and photo removal/balanced header behavior.
-- Add shared global style settings and per-template overrides.
-
-**Exit criteria:** five distinct templates render the same schema without template-specific data duplication.
-
-### Phase 5 — Page controls and backup hardening
-
-- Add resume/CV defaults and max-page preferences.
-- Detect actual output page count and show overflow warnings.
-- Implement full ZIP backup/import including photos and variants.
-- Add data migration handling for schema changes.
-
-**Exit criteria:** long-content cases fail visibly and safely; project restore is verified.
-
-### Phase 6 — QA and local usability
-
-- Run lint, typecheck, unit/integration tests and production build.
-- Compile all templates using local `pdflatex` in tests.
-- Verify edge cases, text extraction, links, image inclusion, and page counts.
-- Document setup, running, backup/restore, `PDFLATEX_PATH`, and troubleshooting.
-- Optional: only after the web app is stable, assess Tauri packaging for a Windows desktop executable.
-
-**Exit criteria:** reproducible local setup, written usage instructions, and no known silent data-loss paths.
-
-## 9. Required tests
-
-- LaTeX escaping: backslash, braces, `$`, `&`, `%`, `#`, `_`, `~`, `^`, newlines, and Unicode punctuation supported by the chosen pdfLaTeX setup.
-- Empty/missing optional sections and empty contact fields.
-- Long projects/bullets/URLs, long organization names, dates, and unusual text lengths.
-- All implemented templates compile with fixture data via local `pdflatex`.
-- Photo present, photo absent, unsupported format, and oversized photo.
-- Resume overflow and CV 1/2/3/4-page edge cases; show warning/over-limit behavior rather than discarding content.
-- Data save/reload and backup/import round trip.
-- Multiple variants do not overwrite each other's overrides.
-- PDF has nonzero size, selectable text, working links, and expected page count.
-- Missing `pdflatex`, compile failure, timeout, and invalid import produce actionable errors.
-
-## 10. Developer workflow and documentation
-
-Document:
-
-- Prerequisites: supported Node.js version and TeX Live with `pdflatex` available on PATH.
-- Install/dev/build/test commands using the repository's package manager.
-- How to set `PDFLATEX_PATH` on Windows if PATH detection fails.
-- Where local data is stored and how to export a backup.
-- How to add/change a template safely.
-- Known pdfLaTeX character/font limitations; never silently omit unsupported glyphs.
-
-At the end of every implementation phase, report:
-
-1. What was built.
-2. Files changed/created.
-3. Commands and tests actually run.
-4. Test/build outcomes.
-5. Known limitations and the next phase.
-
-## 11. Progress checklist
-
-- [x] Inspect instructions, repository, toolchain, reference files, and local `pdflatex` availability.
-- [x] Render and visually inspect all three reference pages; write `docs/reference-design-notes.md`.
-- [x] Implement validated project schema, IndexedDB autosave, independent variants, and versioned JSON backup/import.
-- [x] Implement T1 and the guarded local `pdflatex` route; compile and visually inspect a synthetic PDF against the reference.
-- [x] Implement the editor, templates T2–T5, actual PDF preview/download, overflow reporting, photo option, and project backup/import.
-- [x] Run automated checks and production build; record actual results below.
-
-### Delivery status
-
-- Implemented with Next.js 16 App Router, TypeScript, Tailwind CSS v4, and shadcn/ui primitives. The checked-in build command uses Next's supported Webpack mode because the sandbox's Turbopack PostCSS worker could not start; development keeps the default Turbopack mode.
-- Local Windows TeX Live `pdflatex` was found and used. The route runs in the Node.js runtime, resolves `PDFLATEX_PATH` or `PATH`, uses fixed arguments with `shell: false`, disables shell escape, bounds execution/logs, validates text and page count, and cleans per-request temporary files.
-- The editor includes a synthetic starter library, master content plus variant overrides, section/entry visibility and ordering, editing and duplication, style/page controls, optional photo, IndexedDB save status, validated JSON backup/import, and compiled preview/export.
-- Verification run on 2026-10-25: `npm test` passed (29/29), `npm run lint`, `npm run typecheck`, and a production Webpack build passed. The build used `NEXT_DIST_DIR=.next-production` so it did not conflict with the active dev server. The T1 synthetic PDF has been rendered and visually inspected.
-- Remaining QA: browser-driven edit → reload → restore workflow was not automated in this restricted environment; photo coverage checks the profile-photo template compile path, while broad image-format/oversize UI interactions still need manual browser QA. Backup format is a versioned JSON file with photo data embedded, not ZIP. `pdflatex` availability and supported glyphs depend on the local TeX Live installation.
-
-## 12. V-next editor and preview polish (2026-10)
-
-- [x] Add a locally bundled DM Sans UI font and light/dark/system themes.
-- [x] Raise editor text and control sizes; persist theme and collapsed-library preference locally.
-- [x] Add a collapsible resume library rail and an accessible editor/PDF divider that supports mouse dragging and arrow-key resizing.
-- [x] Add phone/tablet Edit and PDF tabs; keep variant selection available while editing.
-- [x] Add local PDF.js page canvases, page navigation, zoom, fit controls, actual page metadata, and verified download validation.
-- [x] Return preview bytes inside a JSON response (without PDF MIME or attachment headers) so download managers do not capture every background compile. Browser verification now receives HTTP 200 and renders the compiled page.
-- [x] Start a local compile after an adjustable 0.5–2 second idle delay (800 ms default); abort obsolete fetches and propagate cancellation to the Node compiler.
-- [x] Add Quick and Advanced design controls, four presentation presets, reset-to-template-default, independent margins, and renderer-backed spacing/divider settings.
-- [x] Add typed website/LinkedIn/GitHub/portfolio links with local Lucide icons and preserve clickable, selectable labels in PDFs.
-- [x] Make profile and content sections collapsible; move privacy details out of the application header into the library sidebar.
-- [x] Add per-section font size, horizontal margins, vertical margins, padding, and divider visibility/weight, with page-break-safe LaTeX rendering.
-- [x] Add seven PDF font families and compile fixtures through each installed TeX Live family.
-- [x] Migrate version 1 backups to schema 2 and test preservation of content, photos, overrides, and design values.
-- [x] Verify browser preview end to end: agent-browser receives HTTP 200 JSON, the client verifies metadata and `%PDF-` bytes, and the actual PDF.js canvas renders one page with correct page count.
-- [ ] Verify manual file saving in the user's normal Chrome profile. The agent-browser download tool canceled its blob-triggered save even though preview rendering and route byte validation pass; a later browser automation session could not start because its socket directory was denied by the sandbox.
+# Resume Studio — Engineering & Product Roadmap
+
+## 1. Product Vision & Non-Negotiable Core Principles
+
+**Resume Studio** is a private, local-first personal resume and CV development environment for Windows. Inspired by the clean typography and spatial balance of FlowCV, it provides complete control over structured resume data, typography, visual hierarchy, variant branching, and local PDF compilation.
+
+### Core Non-Negotiables
+- **100% Local-First & Private**: User resume data, contact information, photos, and job descriptions never leave the local machine. Zero mandatory login, zero third-party telemetry, zero external cloud subscriptions, and zero paid API dependencies.
+- **Local TeX Live `pdflatex` Compilation**: All production PDF exports and preview renders are generated by the locally installed TeX Live `pdflatex` engine via a secure Node.js runtime process (`spawn` with `shell: false`, `-no-shell-escape`, isolated temporary workspaces, and strict escaping).
+- **Zero Silent Content Loss**: Content belongs to the user. The app will never silently delete, truncate, drop, or rewrite text to force a page count. Any layout adjustment or fit recommendation requires explicit user preview and approval.
+- **Data & Presentation Separation**: Single canonical content library with independent, versioned variants. Variants reference entries by stable IDs and maintain non-destructive overrides.
+- **Resilient Multi-Runtime Architecture**: The primary application (Next.js 16 + Node.js) functions completely standalone without external dependencies. Advanced ML features run through an optional local Python microservice on loopback (`127.0.0.1`), with automatic graceful degradation when the Python runtime is not active.
+
+---
+
+## 2. System Architecture
+
+```
++-----------------------------------------------------------------------------------+
+|                                 USER BROWSER                                      |
+|  - FlowCV-Inspired Split Workspace (Collapsible Sidebar, Editor, PDF.js Preview)  |
+|  - IndexedDB Persistence (Local Drafts, Master Library, Visual Settings, Photos)  |
+|  - Client-Side State: React 19, TypeScript, Vanilla CSS + Tailwind v4 Design Sys  |
++------------------------------------------+----------------------------------------+
+                                           |
+                    HTTP / JSON on 127.0.0.1:3000 (Loopback Only)
+                                           |
++------------------------------------------v----------------------------------------+
+|                         NEXT.JS APP ROUTER (Node.js Runtime)                      |
+|                                                                                   |
+|  [Route: /api/compile]                                                            |
+|  - Input Validation & Schema Guard (Zod)                                          |
+|  - LaTeX Escaper & Link Sanitizer                                                 |
+|  - Isolated Per-Request Temp Directory Manager                                    |
+|  - Spawn: pdflatex -interaction=nonstopmode -halt-on-error -no-shell-escape       |
+|  - Process Timeout & Safe Diagnostic Log Redaction                                |
+|  - Output PDF Byte Verification & Fast HTTP 200 JSON Payload Transfer             |
+|                                                                                   |
+|  [Route: /api/export-tex] (Phase 4)                                               |
+|  - Packages standalone .tex source + validated assets into a downloadable .zip    |
++------------------------------------------+----------------------------------------+
+                                           |
+                 Optional Internal IPC / HTTP on 127.0.0.1:8000
+                                           |
++------------------------------------------v----------------------------------------+
+|               LOCAL PYTHON ML MICROSERVICE (FastAPI / PyTorch / spaCy)             |
+|                                                                                   |
+|  - 100% Offline, runs locally on user's machine (CPU or CUDA/DirectML)           |
+|  - Semantic Matcher: sentence-transformers (all-MiniLM-L6-v2 / bge-small-en)      |
+|  - Entity & Skill Extraction: spaCy NER pipeline (custom resume skill taxonomy)   |
+|  - ATS Parsing Simulator: Emulates enterprise ATS parsing graphs & date formats  |
+|  - Action-Verb & Impact Scorer: XYZ formula analysis & local bullet enhancement   |
+|  - Optional Local LLM/SLM: llama-cpp-python (quantized Qwen2.5/Llama-3.2 1B/3B)   |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 3. Current Implementation Status (Completed)
+
+- [x] **Local `pdflatex` Engine**: Secure Node runtime spawn pipeline with timeout, argument validation, and per-compile temp directory isolation.
+- [x] **5 Distinct LaTeX Templates**:
+  - `t01-simple-ats`: Primary FlowCV-like clean, compact one-page software developer resume.
+  - `t02-clean-compact`: Left-aligned dense layout for concise project-heavy applications.
+  - `t03-modern-developer`: Modern single-column layout with restrained accent palette.
+  - `t04-academic-cv`: Multi-page, text-first academic/research CV (supporting 2–3 pages).
+  - `t05-profile-cv`: Professional CV with optional balanced portrait header.
+- [x] **FlowCV-Inspired Sidebar UI**: Collapsible sidebar housing Brand, live autosave indicator (`● Saved locally`), document library, inline rename, variant duplication (`⧉`), and delete.
+- [x] **Draft Creation Workflow**: Modal to instantiate either a **1-Page Developer Resume** (targeting `Md.Atikur_Rahaman_Full_Stack_Dev.pdf`) or a **2-Page Academic CV** (targeting `Md.Atikur-Rahaman-CV.pdf`).
+- [x] **High-Density 15.6" Laptop Optimization**: 100vh fluid workspace, removal of top navigation bar to reclaim vertical viewport height (650–750px), custom dark-mode Chromium dropdown contrast styling.
+- [x] **Real-Time PDF Preview**: Client-side PDF.js rendering with zoom, page navigation, and side-by-side **Two-Page Spread View** for multi-page CVs.
+- [x] **Design Customizer**: 6 curated color palettes, 7 TeX Live font families, granular margin and divider controls, presentation presets.
+- [x] **Test Suite**: 29 automated tests covering all 5 templates, local LaTeX escaping, selectable text validation, preset resolution, and preferences.
+
+---
+
+## 4. Phase-by-Phase Development Plan
+
+```mermaid
+graph TD
+    P1[Phase 1: FlowCV-Grade Interactive Editor & Formatting] --> P2[Phase 2: Local Python ML Service & Semantic ATS Matcher]
+    P2 --> P3[Phase 3: One-Click Page-Fit Assistant & Spacing Intelligence]
+    P3 --> P4[Phase 4: Local Model Training, Fine-Tuning & Quantized LLM]
+    P4 --> P5[Phase 5: Deep LaTeX Developer Tools & Ecosystem]
+```
+
+---
+
+### Phase 1: FlowCV-Grade Interactive Editor & Formatting Ergonomics
+*Goal: Provide a tactile, zero-friction editing experience with intuitive ordering, rich typography formatting, and header customization.*
+
+#### 1.1 Drag-and-Drop Reordering (Sections & Entries)
+- **UI/UX**:
+  - Replace `↑` / `↓` button clicks with smooth, physics-informed drag handles using `@hello-pangea/dnd` or native HTML5 drag.
+  - Section reordering (e.g. moving *Projects* above *Experience*, or *Skills* below *Education*) with real-time drop-target indicators.
+  - Entry reordering inside sections (e.g. reordering jobs or degrees) with smooth transition animations.
+  - Keyboard accessible: <kbd>Space</kbd> to pick up, <kbd>↑</kbd>/<kbd>↓</kbd> to move, <kbd>Enter</kbd> to drop.
+- **Data Layer**:
+  - Update variant-specific `sectionOrder` and `entryOrder` arrays non-destructively in IndexedDB.
+
+#### 1.2 Inline Rich Formatting in Bullets
+- **Feature**:
+  - Allow writing standard Markdown inside bullet points:
+    - Bold: `**React**` or `**reduced latency by 45%**`
+    - Italic: `*Summa Cum Laude*`
+    - Links: `[Live Demo](https://example.com)`
+- **LaTeX Safe Translation**:
+  - Safe preprocessing pipeline converting Markdown syntax into pure LaTeX macros:
+    - `**text**` → `\textbf{text}`
+    - `*text*` → `\textit{text}`
+    - `[label](url)` → `\href{sanitized_url}{\underline{label}}`
+  - Strict escaping of user text before wrapping in LaTeX commands to prevent injection.
+
+#### 1.3 Header Layout Switcher & Section Divider Styles
+- **UI/UX**:
+  - Visual selector in the **Design** tab for 3 primary header architectures:
+    1. **Centered Minimalist**: Classic FlowCV look (Name, title, centered contact row with icons).
+    2. **Modern Left-Aligned**: Name/title on left, contact chips stacked or right-aligned.
+    3. **Split Two-Column Header**: Left column for identity, right column for GitHub, LinkedIn, Portfolio, and Phone.
+  - Section divider styles:
+    - *Hairline Solid* (default 0.6pt).
+    - *Accent Tinted Bar* (uses the active theme accent color).
+    - *Dotted / Dashed Accent*.
+    - *Clean Whitespace* (no line; relying purely on typographic hierarchy).
+
+#### 1.4 Local Profile Photo Cropper & Mask Tool (Template 05)
+- **UI/UX**:
+  - In-browser interactive canvas cropper for `t05-profile-cv`.
+  - Supports zoom, pan, and circular / rounded-square mask preview.
+  - Automated client-side format conversion to standard PNG/JPEG (eliminates unsupported WebP inputs before compile).
+
+---
+
+### Phase 2: Local Python ML Backend & Semantic ATS Matching
+*Goal: Build a dedicated, 100% offline Python machine learning service that evaluates resume relevance against real job descriptions without sending any data to external servers.*
+
+#### 2.1 Python ML Microservice Architecture
+- **Technology Stack**:
+  - **Framework**: FastAPI + Uvicorn bound strictly to `127.0.0.1:8000`.
+  - **Embeddings**: `sentence-transformers` running lightweight, high-performance models (`all-MiniLM-L6-v2` or `bge-small-en-v1.5`, ~80MB footprint, fast CPU inference).
+  - **Entity Extraction**: `spaCy` (`en_core_web_sm` / `en_core_web_md`) enhanced with a curated open-source tech-skills taxonomy.
+  - **Execution**: Managed as a local background companion service or launched on-demand via a simple start script (`run-ml.bat` / `run-ml.sh`).
+- **Resilient Fallback**:
+  - The Next.js web application pings `http://127.0.0.1:8000/health`. If offline, the UI displays a clean status indicator (*"ML Engine: Idle / Offline"*) and all core editing/LaTeX compilation works with zero degradation.
+
+#### 2.2 Semantic Job Description Matcher
+- **UI/UX**:
+  - **ATS Studio Drawer**: A slide-over panel where the user pastes the raw text of a target Job Description.
+  - **Semantic Match Gauge**: Visual match percentage (0–100%) calculated via cosine similarity between resume bullet vectors and JD requirement vectors.
+  - **Keyword & Skill Categorization**:
+    - *Matched Core Skills* (green tags): E.g., `TypeScript`, `Next.js`, `Docker`, `PostgreSQL`.
+    - *Partially Related Competencies* (amber tags): E.g., JD asks for `Kubernetes`, resume mentions `Containerization/Docker`.
+    - *Missing High-Frequency Keywords* (red outline tags): Critical JD requirements absent from the resume.
+
+#### 2.3 Simulated ATS Parser & Validation Diagnostic
+- **Feature**:
+  - Runs a parsing simulation emulating popular applicant tracking systems (Greenhouse, Lever, Workday).
+  - Tests whether the compiled PDF yields clean, structured plaintext in correct reading order:
+    - Does the parser cleanly separate Job Title from Company Name?
+    - Are start/end dates parsed into standard ISO dates?
+    - Are contact phone numbers and email addresses unambiguously extracted?
+  - Highlights potential ATS parsing traps (e.g. multi-column text collision, unparseable date formats).
+
+#### 2.4 Bullet Impact & Quantification Scorer (Google XYZ Rule)
+- **NLP Analysis**:
+  - Analyzes every bullet point against the Google XYZ formula: *"Accomplished [X] as measured by [Y], by doing [Z]"*.
+  - **Verb Strength Classifier**: Flags weak passive verbs (*"Assisted with"*, *"Responsible for"*, *"Worked on"*) and suggests high-impact alternatives (*"Architected"*, *"Optimized"*, *"Pioneered"*).
+  - **Metric Detection**: Flags bullets that lack measurable impact metrics (percentages, latency reductions, user volume, dollar savings).
+
+---
+
+### Phase 3: One-Click Page-Fit Assistant & Spacing Intelligence
+*Goal: Solve the classic resume overflow problem (spilling 2–4 lines onto an unwanted next page) through deterministic, mathematical micro-adjustments with strict user consent.*
+
+#### 3.1 Page Budget Gauge & Real-Time Overflow Telemetry
+- **Feature**:
+  - Inspects the compiled PDF page count and vertical content height.
+  - Displays a subtle **Page Fullness Meter** in the preview toolbar:
+    - `92% Page 1`: Healthy, balanced one-page resume.
+    - `100% Page 1`: Perfectly filled single page.
+    - `104% (Page 2 Overflow — 3 lines)`: Actionable warning banner.
+
+#### 3.2 The "Fit to Exactly 1 Page" Assistant (Mathematical Micro-Tuner)
+- **Constraint**: *Strictly preserves our non-negotiable rule: Never silently shrink or cut content.*
+- **Algorithm & Bounds**:
+  - When a document spills onto Page 2 by $\le 6$ lines, the user can click **"Fit to 1 Page Assistant"**.
+  - The assistant calculates safe, proportional micro-adjustments within strictly validated typographic bounds:
+    - Section bottom margin: `8pt → 6.5pt`
+    - Entry item separation: `4pt → 3pt`
+    - Page top/bottom margins: `18mm → 16mm`
+    - Line stretch / font size: `10pt → 9.5pt`
+- **Interactive Diff Modal**:
+  - Shows the user the exact proposed changes in a clear side-by-side comparison.
+  - Compiles a draft preview so the user sees the visual balance before clicking **"Apply Adjustments"** or **"Keep As Is"**.
+
+---
+
+### Phase 4: Local Model Training, Fine-Tuning & Quantized LLM Assist
+*Goal: Provide privacy-preserving, local AI assistance for bullet point refinement and custom skill entity recognition without relying on paid commercial APIs.*
+
+#### 4.1 Custom Resume Entity Recognition (NER) Fine-Tuning Pipeline
+- **Dataset & Pipeline**:
+  - Python training script using Hugging Face `transformers` or `spaCy` to fine-tune a small NER model on open-source resume corpus data (e.g., tech skills, certifications, job titles).
+  - Enables Resume Studio to identify domain-specific technologies and developer tools that generic language models miss.
+
+#### 4.2 Local Quantized LLM Inference (Offline Bullet Polishing)
+- **Technology**:
+  - Integration with `llama-cpp-python` or local `Ollama` endpoint running small, ultra-fast quantized models:
+    - `Llama-3.2-1B-Instruct-GGUF` (fast, low memory footprint ~1.2GB VRAM/RAM).
+    - `Qwen2.5-1.5B-Instruct-GGUF` (exceptional coding and technical reasoning).
+- **User-Controlled UX Flow**:
+  - User selects a bullet point and clicks **"Suggest Stronger Phrasing"**.
+  - Local model returns 3 distinct variations:
+    1. *Quantified Impact Variation* (emphasizing metrics and scale).
+    2. *Action-First Variation* (emphasizing technical leadership and execution).
+    3. *Compact ATS Variation* (densely packed with relevant keywords).
+  - User can click **"Insert"**, **"Edit"**, or **"Dismiss"**. No automatic text replacement is ever permitted.
+
+---
+
+### Phase 5: Deep LaTeX Developer Tools & Local Ecosystem
+*Goal: Empower power users and LaTeX enthusiasts with total transparency, inspection tools, and portable backups.*
+
+#### 5.1 Live LaTeX Source Inspector & Diff Viewer
+- **UI/UX**:
+  - A slide-over code drawer displaying the exact `.tex` markup generated for the active variant.
+  - Real-time syntax highlighting with copy-to-clipboard.
+  - **Live LaTeX Diff**: Shows line-by-line diffs (`+` / `-`) when switching between templates or modifying design presets.
+
+#### 5.2 Standalone LaTeX ZIP Bundle Export
+- **Feature**:
+  - **"Export LaTeX Package (.zip)"** button.
+  - Produces an archive containing:
+    - `main.tex`: Complete, standalone document that compiles cleanly in any standard TeX Live / Overleaf environment.
+    - `/assets`: Local images, fonts, or icons referenced in the document.
+    - `resume-data.json`: Versioned backup of the structured resume content.
+
+#### 5.3 Local Snapshot History ("Time Machine")
+- **Feature**:
+  - Named local checkpoints stored in IndexedDB:
+    - E.g. *"Baseline Full-Stack Draft"*, *"Tailored for Google SRE"*, *"Post-Review with Mentor"*.
+  - One-click rollback to any historical snapshot or fork into a new variant.
+
+#### 5.4 PDF/A Archival & Accessibility Compliance
+- **Feature**:
+  - Support compiling with `pdfx` or `pdfmanagement-testphase` for **PDF/A-1b / PDF/A-2b** compliance.
+  - Ensures long-term digital preservation and flawless readability for automated enterprise document archival systems.
+
+---
+
+## 5. UI/UX Design System & Ergonomics Standards
+
+### 5.1 Visual Style & Palette Tokens
+- **Backgrounds**: Deep, rich dark theme (`#0b0f0d` root, `#131a15` sidebar/cards, `#1c2620` hover/subtle borders).
+- **Accents**: Curated, harmonious colors with high contrast:
+  - *Forest Emerald*: `#10b981` (Primary system accent).
+  - *Classic Navy*: `#3b82f6`
+  - *Slate Executive*: `#64748b`
+  - *Academic Crimson*: `#e11d48`
+  - *Developer Teal*: `#14b8a6`
+  - *Monochrome ATS*: `#27272a`
+- **Typography**: Inter / DM Sans for application interface; standard Latin Modern / TeX Gyre / Computer Modern for compiled LaTeX output.
+
+### 5.2 15.6" Laptop Workspace Optimization
+- **Viewport Constraints**: Desktop laptop displays typically provide $1366 \times 768$ to $1920 \times 1080$ resolution, with usable browser viewport height ranging from **650px to 750px**.
+- **Design Guidelines**:
+  - Zero wasted vertical space: All navigation and draft switching resides in the collapsible left sidebar.
+  - Sticky section quick-nav chips (`[ 👤 Profile ] [ ⚡ Skills ] [ 💼 Experience ]`) allow instant jumping across long forms without manual scrolling.
+  - Dual independent scroll containers: Editor and PDF Canvas scroll independently with synchronized heights.
+
+### 5.3 Multi-Page Document Inspection
+- **Two-Page Spread View**: Side-by-side Page 1 and Page 2 rendering for 2+ page CVs (such as `t04-academic-cv` targeting `Md.Atikur-Rahaman-CV.pdf`).
+- Enables immediate evaluation of visual density, whitespace balance, and page-break placement without vertical scrolling.
+
+---
+
+## 6. Testing & Quality Assurance Gates
+
+Every feature must pass the following validation criteria prior to delivery:
+
+1. **Automated Unit & Integration Checks**:
+   - `npm run typecheck`: Strict TypeScript, 0 errors.
+   - `npm run lint`: ESLint with React 19 rules, 0 errors, 0 warnings.
+   - `npm test`: Automated Vitest test suite executing local `pdflatex` compilation across all templates.
+2. **LaTeX Escaping & Injection Rigor**:
+   - Automated tests verifying correct handling of special characters: `\`, `{`, `}`, `$`, `&`, `%`, `#`, `_`, `~`, `^`, angle brackets, and Unicode punctuation.
+   - Hyperlink sanitization ensuring only valid `http://`, `https://`, and `mailto:` protocols are compiled.
+3. **Synthetic Fixture Rule**:
+   - Never commit private personal data (real phone numbers, personal email, home address, personal photos) into the repository or tests.
+   - All tests and screenshots must utilize synthetic fixtures.
+4. **Offline Resilience**:
+   - The application must remain fully functional when the network is disconnected and when the optional Python ML backend is offline.

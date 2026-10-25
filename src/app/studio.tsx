@@ -6,7 +6,9 @@ import {
   ContactLink,
   ContactLinkType,
   ContentEntry,
+  DividerStyle,
   FontFamily,
+  HeaderLayout,
   ProjectData,
   ResumeVariant,
   SectionDesignSettings,
@@ -25,15 +27,20 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
 import {
+  Bold,
   BriefcaseBusiness,
+  Camera,
   ChevronDown,
   ChevronRight,
   ChevronLeft,
   Copy,
+  Crop,
   Download,
   FileText,
   Github,
   Globe,
+  GripVertical,
+  Italic,
   Linkedin,
   Link as LinkIcon,
   Moon,
@@ -117,6 +124,22 @@ export default function Studio() {
   const [newDraftName, setNewDraftName] = useState('');
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
   const dragX = useRef<number | null>(null);
+
+  // Drag and Drop state
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
+  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null);
+  const [draggedEntryInfo, setDraggedEntryInfo] = useState<{ sectionId: string; index: number } | null>(null);
+  const [dragOverEntryIndex, setDragOverEntryIndex] = useState<number | null>(null);
+
+  // Photo Cropper Modal state
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [cropperRawImage, setCropperRawImage] = useState<string | null>(null);
+  const [cropperZoom, setCropperZoom] = useState(1);
+  const [cropperPan, setCropperPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const photoCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cropperImgRef = useRef<HTMLImageElement | null>(null);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
 
@@ -220,6 +243,17 @@ export default function Studio() {
       updateProject(p => ({
         ...p,
         library: { ...p.library, profile: { ...p.library.profile, links } },
+      }));
+    }
+  }
+
+  function editProfilePhoto(photoDataUrl?: string) {
+    if (Object.keys(active.profileOverrides).length) {
+      updateVariant(v => ({ ...v, profileOverrides: { ...v.profileOverrides, photoDataUrl } }));
+    } else {
+      updateProject(p => ({
+        ...p,
+        library: { ...p.library, profile: { ...p.library.profile, photoDataUrl } },
       }));
     }
   }
@@ -393,6 +427,227 @@ export default function Studio() {
         return { ...s, entryIds: ids };
       }),
     }));
+  }
+
+  // --- DRAG AND DROP REORDERING ---
+  function onSectionDragStart(e: React.DragEvent, index: number) {
+    setDraggedSectionIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `section:${index}`);
+  }
+
+  function onSectionDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    if (draggedSectionIndex !== null && draggedSectionIndex !== index) {
+      setDragOverSectionIndex(index);
+    }
+  }
+
+  function onSectionDrop(e: React.DragEvent, targetIndex: number) {
+    e.preventDefault();
+    if (draggedSectionIndex !== null && draggedSectionIndex !== targetIndex) {
+      updateVariant(v => {
+        const sections = [...v.sections];
+        const [removed] = sections.splice(draggedSectionIndex, 1);
+        sections.splice(targetIndex, 0, removed);
+        return { ...v, sections };
+      });
+    }
+    setDraggedSectionIndex(null);
+    setDragOverSectionIndex(null);
+  }
+
+  function onSectionDragEnd() {
+    setDraggedSectionIndex(null);
+    setDragOverSectionIndex(null);
+  }
+
+  function onEntryDragStart(e: React.DragEvent, sectionId: string, index: number) {
+    setDraggedEntryInfo({ sectionId, index });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `entry:${sectionId}:${index}`);
+  }
+
+  function onEntryDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    if (draggedEntryInfo !== null && draggedEntryInfo.index !== index) {
+      setDragOverEntryIndex(index);
+    }
+  }
+
+  function onEntryDrop(e: React.DragEvent, sectionId: string, targetIndex: number) {
+    e.preventDefault();
+    if (
+      draggedEntryInfo !== null &&
+      draggedEntryInfo.sectionId === sectionId &&
+      draggedEntryInfo.index !== targetIndex
+    ) {
+      updateVariant(v => ({
+        ...v,
+        sections: v.sections.map(s => {
+          if (s.id !== sectionId) return s;
+          const ids = [...s.entryIds];
+          const [removed] = ids.splice(draggedEntryInfo.index, 1);
+          ids.splice(targetIndex, 0, removed);
+          return { ...s, entryIds: ids };
+        }),
+      }));
+    }
+    setDraggedEntryInfo(null);
+    setDragOverEntryIndex(null);
+  }
+
+  function onEntryDragEnd() {
+    setDraggedEntryInfo(null);
+    setDragOverEntryIndex(null);
+  }
+
+  // --- BULLET RICH FORMATTING HELPERS ---
+  function insertBulletFormatting(entryId: string, prefix: string, suffix: string) {
+    const master = selectedEntries.get(entryId);
+    if (!master) return;
+    const entry = { ...master, ...active.entryOverrides[entryId] };
+    const bullets = [...entry.bullets];
+    if (bullets.length === 0) {
+      bullets.push(`${prefix}Text${suffix}`);
+    } else {
+      const lastIndex = bullets.length - 1;
+      bullets[lastIndex] = `${bullets[lastIndex]} ${prefix}Text${suffix}`;
+    }
+    editEntry(entryId, { bullets });
+  }
+
+  function insertActionVerb(entryId: string, verb: string) {
+    const master = selectedEntries.get(entryId);
+    if (!master) return;
+    const entry = { ...master, ...active.entryOverrides[entryId] };
+    const bullets = [...entry.bullets];
+    if (bullets.length === 0) {
+      bullets.push(`${verb} `);
+    } else {
+      const lastIndex = bullets.length - 1;
+      bullets[lastIndex] = bullets[lastIndex].trim() ? `${bullets[lastIndex]}\n${verb} ` : `${verb} `;
+    }
+    editEntry(entryId, { bullets: bullets.join('\n').split('\n') });
+  }
+
+  // --- PHOTO CROPPER CANVAS LOGIC ---
+  const drawCropperCanvas = useCallback(() => {
+    const canvas = photoCanvasRef.current;
+    const img = cropperImgRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#0f1411';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (img && img.complete) {
+      const scale = Math.max(canvas.width / img.width, canvas.height / img.height) * cropperZoom;
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const cx = canvas.width / 2 + cropperPan.x;
+      const cy = canvas.height / 2 + cropperPan.y;
+      ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+    } else {
+      ctx.fillStyle = '#64756b';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Upload an image to crop', canvas.width / 2, canvas.height / 2);
+    }
+
+    // Circular Mask overlay
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.arc(canvas.width / 2, canvas.height / 2, 105, 0, Math.PI * 2, true);
+    ctx.fill();
+
+    // Circle border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 105, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }, [cropperPan.x, cropperPan.y, cropperZoom]);
+
+  useEffect(() => {
+    if (!showPhotoModal) return;
+    if (cropperRawImage) {
+      const img = new Image();
+      img.onload = () => {
+        cropperImgRef.current = img;
+        drawCropperCanvas();
+      };
+      img.src = cropperRawImage;
+    } else {
+      cropperImgRef.current = null;
+      drawCropperCanvas();
+    }
+  }, [cropperRawImage, drawCropperCanvas, showPhotoModal]);
+
+  useEffect(() => {
+    if (showPhotoModal) drawCropperCanvas();
+  }, [cropperPan, cropperZoom, drawCropperCanvas, showPhotoModal]);
+
+  function handlePanStart(e: React.MouseEvent) {
+    setIsPanning(true);
+    panStartRef.current = { x: e.clientX - cropperPan.x, y: e.clientY - cropperPan.y };
+  }
+
+  function handlePanMove(e: React.MouseEvent) {
+    if (!isPanning) return;
+    setCropperPan({ x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y });
+  }
+
+  function handlePanEnd() {
+    setIsPanning(false);
+  }
+
+  function handleImageFileUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const result = ev.target?.result as string;
+      setCropperRawImage(result);
+      setCropperZoom(1);
+      setCropperPan({ x: 0, y: 0 });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleSaveCroppedPhoto() {
+    const img = cropperImgRef.current;
+    if (!img) {
+      setShowPhotoModal(false);
+      return;
+    }
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 400;
+    offscreen.height = 400;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) return;
+
+    const displayRadius = 105;
+    const scale = Math.max(280 / img.width, 280 / img.height) * cropperZoom;
+    const factor = 400 / (displayRadius * 2);
+
+    const cx = (140 + cropperPan.x - 140 + displayRadius) * factor;
+    const cy = (140 + cropperPan.y - 140 + displayRadius) * factor;
+    const w = img.width * scale * factor;
+    const h = img.height * scale * factor;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 400, 400);
+    ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+
+    const pngDataUrl = offscreen.toDataURL('image/png');
+    editProfilePhoto(pngDataUrl);
+    setShowPhotoModal(false);
+    setMessage('Profile photo updated.');
   }
 
   // --- DRAFT CREATION & DUPLICATION ---
@@ -1030,6 +1285,65 @@ export default function Studio() {
 
                 {!profileCollapsed && (
                   <CardContent className="p-0">
+                    {/* Profile Photo Avatar Row */}
+                    <div className="wide profile-photo-row">
+                      <div className="profile-avatar-box">
+                        {(active.profileOverrides.photoDataUrl ?? project.library.profile.photoDataUrl) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={active.profileOverrides.photoDataUrl ?? project.library.profile.photoDataUrl}
+                            alt="Profile preview"
+                            className="profile-avatar-img"
+                          />
+                        ) : (
+                          <Camera size={22} className="text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold">Profile Photo (Template 05 / CV)</div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {(active.profileOverrides.photoDataUrl ?? project.library.profile.photoDataUrl)
+                            ? 'Photo active for photo-enabled templates.'
+                            : 'Optional portrait photo for CV.'}
+                        </div>
+                        <div className="photo-actions">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="button secondary"
+                            onClick={() => {
+                              setCropperRawImage(
+                                active.profileOverrides.photoDataUrl ?? project.library.profile.photoDataUrl ?? null
+                              );
+                              setCropperZoom(1);
+                              setCropperPan({ x: 0, y: 0 });
+                              setShowPhotoModal(true);
+                            }}
+                          >
+                            <Crop size={13} />
+                            <span>
+                              {(active.profileOverrides.photoDataUrl ?? project.library.profile.photoDataUrl)
+                                ? 'Edit / Crop Photo'
+                                : 'Upload & Crop Photo'}
+                            </span>
+                          </Button>
+                          {(active.profileOverrides.photoDataUrl ?? project.library.profile.photoDataUrl) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => editProfilePhoto(undefined)}
+                            >
+                              <Trash2 size={13} />
+                              <span>Remove</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="field-grid">
                       {(['name', 'title', 'email', 'phone', 'location'] as const).map(field => (
                         <label key={field} className={field === 'location' ? 'wide' : ''}>
@@ -1160,11 +1474,31 @@ export default function Studio() {
                   return (
                     <Card
                       id={`section-${section.id}`}
-                      className={`form-card section-card gap-0 ${collapsed ? 'is-collapsed' : ''}`}
+                      className={`form-card section-card gap-0 ${collapsed ? 'is-collapsed' : ''} ${
+                        draggedSectionIndex === index ? 'is-dragging' : ''
+                      } ${
+                        dragOverSectionIndex === index
+                          ? draggedSectionIndex !== null && draggedSectionIndex < index
+                            ? 'is-drag-over-bottom'
+                            : 'is-drag-over-top'
+                          : ''
+                      }`}
                       key={section.id}
+                      onDragOver={e => onSectionDragOver(e, index)}
+                      onDrop={e => onSectionDrop(e, index)}
                     >
                       <CardHeader className="card-title section-card-title p-0">
                         <div className="section-heading-group">
+                          <span
+                            className="drag-handle"
+                            draggable
+                            onDragStart={e => onSectionDragStart(e, index)}
+                            onDragEnd={onSectionDragEnd}
+                            title="Drag to reorder section"
+                            aria-label={`Drag to reorder ${section.label}`}
+                          >
+                            <GripVertical size={16} />
+                          </span>
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -1374,8 +1708,33 @@ export default function Studio() {
                             if (!master) return null;
                             const entry = { ...master, ...active.entryOverrides[entryId] };
                             return (
-                              <div className="entry-editor" key={entryId}>
+                              <div
+                                className={`entry-editor ${
+                                  draggedEntryInfo?.sectionId === section.id && draggedEntryInfo.index === entryIndex
+                                    ? 'is-dragging'
+                                    : ''
+                                } ${
+                                  draggedEntryInfo?.sectionId === section.id && dragOverEntryIndex === entryIndex
+                                    ? draggedEntryInfo.index < entryIndex
+                                      ? 'is-drag-over-bottom'
+                                      : 'is-drag-over-top'
+                                    : ''
+                                }`}
+                                key={entryId}
+                                onDragOver={e => onEntryDragOver(e, entryIndex)}
+                                onDrop={e => onEntryDrop(e, section.id, entryIndex)}
+                              >
                                 <div className="entry-title-row">
+                                  <span
+                                    className="drag-handle"
+                                    draggable
+                                    onDragStart={e => onEntryDragStart(e, section.id, entryIndex)}
+                                    onDragEnd={onEntryDragEnd}
+                                    title="Drag to reorder entry"
+                                    aria-label="Drag to reorder entry"
+                                  >
+                                    <GripVertical size={14} />
+                                  </span>
                                   <Input
                                     value={entry.title}
                                     aria-label="Entry title"
@@ -1459,6 +1818,48 @@ export default function Studio() {
                                   </label>
                                   <label className="wide">
                                     <span>Bullet points · one per line</span>
+                                    <div className="bullet-format-bar">
+                                      <button
+                                        type="button"
+                                        className="format-btn"
+                                        title="Bold (**text**)"
+                                        onClick={() => insertBulletFormatting(entryId, '**', '**')}
+                                      >
+                                        <Bold size={12} />
+                                        <span>Bold</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="format-btn"
+                                        title="Italic (*text*)"
+                                        onClick={() => insertBulletFormatting(entryId, '*', '*')}
+                                      >
+                                        <Italic size={12} />
+                                        <span>Italic</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="format-btn"
+                                        title="Insert Link ([Label](https://...))"
+                                        onClick={() => insertBulletFormatting(entryId, '[Link Text](https://', ')')}
+                                      >
+                                        <LinkIcon size={12} />
+                                        <span>Link</span>
+                                      </button>
+                                      <div className="format-bar-divider" />
+                                      <span className="format-hint">Verbs:</span>
+                                      {['Architected', 'Spearheaded', 'Optimized', 'Automated', 'Engineered'].map(verb => (
+                                        <button
+                                          key={verb}
+                                          type="button"
+                                          className="format-verb-pill"
+                                          title={`Insert "${verb}"`}
+                                          onClick={() => insertActionVerb(entryId, verb)}
+                                        >
+                                          {verb}
+                                        </button>
+                                      ))}
+                                    </div>
                                     <Textarea
                                       rows={3}
                                       value={entry.bullets.join('\n')}
@@ -1468,7 +1869,7 @@ export default function Studio() {
                                     <div className="bullet-helper">
                                       <Sparkles size={13} className="text-primary shrink-0" />
                                       <span>
-                                        Action verbs: Built · Designed · Architected · Optimized · Spearheaded · Automated
+                                        Supports **bold**, *italic*, and [links](https://) in compiled PDF.
                                       </span>
                                     </div>
                                   </label>
@@ -1706,6 +2107,26 @@ export default function Studio() {
                       >
                         <NativeSelectOption value="a4">A4 (Standard International)</NativeSelectOption>
                         <NativeSelectOption value="letter">US Letter</NativeSelectOption>
+                      </NativeSelect>
+                    </label>
+
+                    <label>
+                      <span>Header Layout</span>
+                      <NativeSelect
+                        value={active.design.headerLayout ?? 'centered'}
+                        onChange={e =>
+                          updateVariant(v => ({
+                            ...v,
+                            design: {
+                              ...v.design,
+                              headerLayout: e.target.value as HeaderLayout,
+                            },
+                          }))
+                        }
+                      >
+                        <NativeSelectOption value="centered">Centered Minimalist (FlowCV)</NativeSelectOption>
+                        <NativeSelectOption value="left">Modern Left-Aligned</NativeSelectOption>
+                        <NativeSelectOption value="split">Split Two-Column Header</NativeSelectOption>
                       </NativeSelect>
                     </label>
 
@@ -1996,6 +2417,27 @@ export default function Studio() {
                           }))
                         }
                       />
+                    </label>
+
+                    <label>
+                      <span>Divider Style</span>
+                      <NativeSelect
+                        value={active.design.dividerStyle ?? 'solid'}
+                        onChange={e =>
+                          updateVariant(v => ({
+                            ...v,
+                            design: {
+                              ...v.design,
+                              dividerStyle: e.target.value as DividerStyle,
+                            },
+                          }))
+                        }
+                      >
+                        <NativeSelectOption value="solid">Solid Body Color</NativeSelectOption>
+                        <NativeSelectOption value="accent">Accent Tinted Line</NativeSelectOption>
+                        <NativeSelectOption value="dotted">Dotted Accent Rule</NativeSelectOption>
+                        <NativeSelectOption value="none">None (Whitespace & Weight)</NativeSelectOption>
+                      </NativeSelect>
                     </label>
 
                     {(
@@ -2322,6 +2764,85 @@ export default function Studio() {
               <Button className="button primary" onClick={handleCreateNewDraft}>
                 <Plus size={14} />
                 <span>Create Draft</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================
+          PHOTO CROPPER MODAL / DIALOG
+          ================================================================= */}
+      {showPhotoModal && (
+        <div
+          className="photo-cropper-overlay"
+          onClick={() => setShowPhotoModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="photo-modal-title"
+        >
+          <div className="photo-cropper-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <strong id="photo-modal-title" className="text-base font-semibold">
+                Crop & Position Profile Photo
+              </strong>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setShowPhotoModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </Button>
+            </div>
+
+            <div
+              className="cropper-stage"
+              onMouseDown={handlePanStart}
+              onMouseMove={handlePanMove}
+              onMouseUp={handlePanEnd}
+              onMouseLeave={handlePanEnd}
+            >
+              <canvas ref={photoCanvasRef} width={280} height={280} />
+            </div>
+
+            <div className="cropper-slider-row">
+              <span>Zoom</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={cropperZoom}
+                onChange={e => setCropperZoom(Number(e.target.value))}
+              />
+              <span>{cropperZoom.toFixed(1)}x</span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Drag on image to reposition</span>
+              <label className="button secondary file-button py-1 px-3 text-xs">
+                <Upload size={12} />
+                <span>Upload New Image</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handleImageFileUpload}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="button secondary"
+                onClick={() => setShowPhotoModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" className="button primary" onClick={handleSaveCroppedPhoto}>
+                Apply & Save to Resume
               </Button>
             </div>
           </div>

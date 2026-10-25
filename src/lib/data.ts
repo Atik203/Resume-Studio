@@ -47,6 +47,9 @@ export interface Section {
   design?: SectionDesignSettings;
 }
 
+export type HeaderLayout = 'centered' | 'left' | 'split';
+export type DividerStyle = 'solid' | 'accent' | 'dotted' | 'none';
+
 export interface DesignSettings {
   paper: 'a4' | 'letter';
   fontSize: number;
@@ -71,6 +74,8 @@ export interface DesignSettings {
   dividerWeightPt: number;
   showDividers: boolean;
   showContactIcons: boolean;
+  headerLayout?: HeaderLayout;
+  dividerStyle?: DividerStyle;
 }
 
 export interface ResumeVariant {
@@ -221,7 +226,9 @@ function isDesign(v: unknown): v is DesignSettings {
     typeof v.entryGapPt === 'number' && Number.isFinite(v.entryGapPt) && v.entryGapPt >= 0 && v.entryGapPt <= 24 &&
     typeof v.bulletIndentMm === 'number' && Number.isFinite(v.bulletIndentMm) && v.bulletIndentMm >= 2 && v.bulletIndentMm <= 16 &&
     typeof v.dividerWeightPt === 'number' && Number.isFinite(v.dividerWeightPt) && v.dividerWeightPt >= 0.1 && v.dividerWeightPt <= 3 &&
-    typeof v.showDividers === 'boolean' && typeof v.showContactIcons === 'boolean';
+    typeof v.showDividers === 'boolean' && typeof v.showContactIcons === 'boolean' &&
+    (v.headerLayout === undefined || ['centered', 'left', 'split'].includes(String(v.headerLayout))) &&
+    (v.dividerStyle === undefined || ['solid', 'accent', 'dotted', 'none'].includes(String(v.dividerStyle)));
 }
 function isVariant(v: unknown): v is ResumeVariant {
   return isObject(v) && isString(v.id) && isString(v.name) && (v.mode === 'resume' || v.mode === 'cv') &&
