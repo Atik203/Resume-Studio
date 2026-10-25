@@ -70,7 +70,23 @@
 - [x] **High-Density 15.6" Laptop Optimization**: 100vh fluid workspace, removal of top navigation bar to reclaim vertical viewport height (650–750px), custom dark-mode Chromium dropdown contrast styling.
 - [x] **Real-Time PDF Preview**: Client-side PDF.js rendering with zoom, page navigation, and side-by-side **Two-Page Spread View** for multi-page CVs.
 - [x] **Design Customizer**: 6 curated color palettes, 7 TeX Live font families, granular margin and divider controls, presentation presets.
-- [x] **Test Suite**: 29 automated tests covering all 5 templates, local LaTeX escaping, selectable text validation, preset resolution, and preferences.
+- [x] **Phase 1: FlowCV-Grade Interactive Editor & Formatting**:
+  - Section drag-and-drop reordering & keyboard shortcuts.
+  - Markdown inline formatting in bullets (`**bold**`, `*italic*`, `[link](url)`) safely escaped into LaTeX macros.
+  - Header layout architecture switcher (Centered Minimalist, Modern Left-Aligned, Split Two-Column Header).
+  - Granular divider styles (Solid Hairline, Accent Tinted Bar, Dotted / Dashed, Clean Whitespace).
+- [x] **Phase 2: Local Python ML Service & Semantic ATS Matcher**:
+  - 100% offline companion microservice on loopback (`http://127.0.0.1:8000/health`) with automatic graceful fallback.
+  - Semantic JD matcher with cosine similarity and keyword gap categorization (matched, partial, missing skills).
+  - Google XYZ bullet scoring (action verb strength, metric detection, methodology).
+  - Simulated ATS parsing diagnostic checking structured data extraction.
+- [x] **Phase 3: One-Click Page-Fit Assistant & Spacing Intelligence**:
+  - Deterministic spacing tightening optimizer with strict typographic safety bounds (minimum 9.0pt font, 13mm margins).
+  - Interactive Page-Fit modal showing side-by-side parametric diffs and reclaimed vertical height percentage.
+  - Page-balancing expansion strategy for underfilled documents.
+  - Orphan Hunter detecting runaway single-word wraps with 1-click wordy filler trimmer.
+  - Multi-page CV section break controls (`\clearpage\noindent `) in section customization drawer.
+- [x] **Comprehensive Test Suite**: 38 automated test cases covering LaTeX generation, escaping, page-fit optimization, orphan detection, and 4 Python ML tests.
 
 ---
 

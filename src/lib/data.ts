@@ -14,6 +14,7 @@ export interface SectionDesignSettings {
   paddingBottomPt?: number;
   showDivider?: boolean;
   dividerWeightPt?: number;
+  pageBreakBefore?: boolean;
 }
 
 export interface Profile {
@@ -248,6 +249,6 @@ function isSectionDesign(value: unknown): value is SectionDesignSettings {
     fontSizePt: [8, 24], marginLeftMm: [0, 25], marginRightMm: [0, 25],
     marginTopPt: [0, 36], marginBottomPt: [0, 36], paddingTopPt: [0, 24], paddingBottomPt: [0, 24], dividerWeightPt: [0.1, 3],
   };
-  return Object.entries(value).every(([key, item]) => key === 'showDivider' ? typeof item === 'boolean' :
+  return Object.entries(value).every(([key, item]) => (key === 'showDivider' || key === 'pageBreakBefore') ? typeof item === 'boolean' :
     key in ranges && typeof item === 'number' && Number.isFinite(item) && item >= ranges[key][0] && item <= ranges[key][1]);
 }
