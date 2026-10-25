@@ -355,8 +355,8 @@ select option {
 
 .draft-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid transparent;
@@ -365,7 +365,7 @@ select option {
   text-align: left;
   transition: all 0.15s ease;
   position: relative;
-  group: draft-card;
+  cursor: pointer;
 }
 
 .draft-item:hover {
@@ -379,68 +379,74 @@ select option {
   box-shadow: var(--shadow-sm);
 }
 
-.draft-main {
+.draft-item-top {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
-.draft-mode-tag {
+.doc-mode-badge {
   font-size: 10px;
   font-weight: 700;
-  padding: 3px 6px;
+  padding: 2px 6px;
   border-radius: 5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  flex-shrink: 0;
-  margin-top: 1px;
 }
 
-.draft-mode-tag.resume {
+.doc-mode-badge.resume {
   background: var(--studio-tag-resume);
   color: var(--studio-tag-resume-text);
 }
 
-.draft-mode-tag.cv {
+.doc-mode-badge.cv {
   background: var(--studio-tag-cv);
   color: var(--studio-tag-cv-text);
 }
 
-.draft-info {
-  min-width: 0;
-  flex: 1;
-}
-
-.draft-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--studio-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.draft-subtitle {
+.draft-page-target {
   font-size: 11px;
+  font-weight: 500;
   color: var(--studio-muted);
-  margin-top: 2px;
+}
+
+.draft-item-title-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  width: 100%;
 }
 
-.draft-actions {
+.draft-name-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--studio-text);
+  padding: 2px 4px;
+  transition: all 0.15s ease;
+}
+
+.draft-name-input:focus {
+  background: var(--studio-control);
+  border-color: var(--studio-accent);
+  outline: none;
+}
+
+.draft-item-actions {
   display: flex;
   align-items: center;
   gap: 2px;
   opacity: 0.8;
+  flex-shrink: 0;
   transition: opacity 0.15s ease;
 }
 
-.draft-item:hover .draft-actions {
+.draft-item:hover .draft-item-actions {
   opacity: 1;
 }
 
@@ -453,6 +459,7 @@ select option {
   display: grid;
   place-items: center;
   transition: all 0.12s ease;
+  cursor: pointer;
 }
 
 .draft-action-btn:hover {
@@ -926,15 +933,6 @@ select option {
   color: var(--studio-text);
 }
 
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--studio-muted);
-  margin-left: 8px;
-}
-
 /* Entry Editor */
 .entry-editor {
   background: var(--studio-panel-muted);
@@ -1166,23 +1164,6 @@ select option {
   height: 3px;
   align-self: center;
   opacity: 0.7;
-}
-
-.setting-toggle {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid var(--studio-line);
-  border-radius: 8px;
-  padding: 8px 12px;
-  min-height: 42px;
-  background: var(--studio-control);
-}
-
-.setting-toggle > span {
-  font-size: 13px !important;
-  color: var(--studio-text) !important;
 }
 
 .color-input {
@@ -2038,5 +2019,103 @@ select option {
 .cropper-slider-row input[type="range"] {
   flex: 1;
   accent-color: var(--studio-accent);
+}
+
+/* 4. Section Actions: Delete Button & Visible Pill Toggle */
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.delete-section-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--studio-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delete-section-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* Theme-Polished Pill Toggle */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px 3px 6px;
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-control-border);
+  border-radius: 9999px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.toggle:hover {
+  background: var(--studio-control);
+  border-color: var(--studio-line);
+}
+
+.toggle span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--studio-muted);
+  letter-spacing: 0.01em;
+  transition: color 0.15s ease;
+}
+
+.toggle:has([data-state="checked"]) {
+  background: var(--studio-accent-subtle);
+  border-color: var(--studio-accent);
+}
+
+.toggle:has([data-state="checked"]) span {
+  color: var(--studio-accent);
+}
+
+/* Design Tab Setting Toggles */
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--studio-panel-muted);
+  border: 1px solid var(--studio-control-border);
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.setting-toggle:hover {
+  background: var(--studio-control);
+  border-color: var(--studio-line);
+}
+
+.setting-toggle span {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--studio-text);
+}
+
+.setting-toggle:has([data-state="checked"]) {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-subtle);
+}
+
+.setting-toggle:has([data-state="checked"]) span {
+  color: var(--studio-accent);
+  font-weight: 600;
 }
 
