@@ -71,6 +71,7 @@ export default function Studio() {
   const [designMode, setDesignMode] = useState<'quick' | 'advanced'>('quick');
   const [preferences, setPreferences] = useState<UiPreferences>(defaultUiPreferences);
   const [editorWidth, setEditorWidth] = useState(540);
+  const [isResizing, setIsResizing] = useState(false);
   const [workspacePane, setWorkspacePane] = useState<'editor' | 'preview'>('editor');
   const [profileCollapsed, setProfileCollapsed] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, string[]>>({});
@@ -774,7 +775,8 @@ export default function Studio() {
       <section
         className={`workspace workspace-${workspacePane} ${
           preferences.sidebarCollapsed ? 'library-collapsed' : ''
-        }`}
+        } ${isResizing ? 'is-resizing' : ''}`}
+        style={{ '--editor-width': `${editorWidth}px` } as React.CSSProperties}
       >
         {/* 1. COLLAPSIBLE LEFT SIDEBAR */}
         <Sidebar
@@ -1071,19 +1073,22 @@ export default function Studio() {
           tabIndex={0}
           onPointerDown={event => {
             dragX.current = event.clientX;
+            setIsResizing(true);
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={event => {
             if (dragX.current === null) return;
             const delta = event.clientX - dragX.current;
             dragX.current = event.clientX;
-            setEditorWidth(width => Math.max(380, Math.min(900, width + delta)));
+            setEditorWidth(width => Math.max(340, Math.min(950, width + delta)));
           }}
           onPointerUp={() => {
             dragX.current = null;
+            setIsResizing(false);
           }}
           onPointerCancel={() => {
             dragX.current = null;
+            setIsResizing(false);
           }}
           onKeyDown={event => {
             if (event.key === 'ArrowLeft') {

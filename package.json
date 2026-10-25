@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1",
-    "build": "next build --webpack",
+    "dev": "node api.js && next dev --hostname 127.0.0.1",
+    "build": "node api.js && next build --webpack",
     "lint": "eslint .",
-    "start": "next start --hostname 127.0.0.1",
+    "start": "node api.js && next start --hostname 127.0.0.1",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
