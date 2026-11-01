@@ -620,15 +620,15 @@ export function DesignTab({
               </label>
             ))}
 
-            {/* PDF/A Archival Toggle */}
+            {/* PDF metadata tags (not a PDF/A conformance flag) */}
             <label className="setting-toggle">
               <div className="flex flex-col">
-                <span className="font-semibold text-white flex items-center gap-1.5">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
                   <ShieldCheck size={13} className="text-emerald-400" />
-                  <span>PDF/A Archival Metadata</span>
+                  <span>PDF document metadata</span>
                 </span>
                 <span className="text-[10.5px] text-muted-foreground">
-                  Injects ISO 19005-1 preservation metadata into compiled PDF
+                  Adds title, author, and subject tags. This does not certify PDF/A compliance.
                 </span>
               </div>
               <Switch
