@@ -75,7 +75,7 @@ const FEATURES = [
   },
   {
     icon: <Sparkles className="text-amber-500" size={24} />,
-    title: 'On-Device Qwen 3.5 4B AI',
+    title: 'Optional On-Device AI',
     desc: 'Private, GPU-accelerated bullet polishing and Google XYZ scoring via local Ollama. Zero API bills, zero data exposure.',
   },
   {
@@ -215,7 +215,7 @@ export function LandingPage() {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 size={15} className="text-emerald-500" />
-                On-Device Qwen 3.5 4B (GPU)
+                Optional On-Device AI
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 size={15} className="text-emerald-500" />
@@ -475,7 +475,7 @@ export function LandingPage() {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
                   <span>
-                    <strong>Non-Destructive AI:</strong> Qwen 3.5 4B suggests variations; you approve every single edit.
+                    <strong>Non-Destructive AI:</strong> The optional local model suggests variations; you approve every single edit.
                   </span>
                 </div>
               </div>
