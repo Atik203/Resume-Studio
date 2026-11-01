@@ -1,7 +1,26 @@
 # Privacy cleanup runbook — reference PDFs
 
-**Status: not executed.** This document describes an optional, destructive history rewrite.
-Do not run it without explicit owner approval.
+**Status: history rewrite executed on 2026-11-01; remote purge is still incomplete.**
+The PDFs are no longer in the current tree or in local `git log --all` / `git rev-list --all`,
+but GitHub still resolves the old commit SHAs and serves the PDFs from
+`raw.githubusercontent.com` at those old commits. A force-push alone does not purge GitHub's cached
+objects.
+
+**Required next step:** either delete and recreate the GitHub repository, or open a GitHub Support
+request asking for the unreachable commit objects and cached views to be purged. Do not treat the
+rewrite as complete erasure until the old raw URLs return 404.
+
+### Verification performed
+
+```powershell
+git log --all --oneline -- '*.pdf'                 # empty
+git rev-list --objects --all | Select-String '\.pdf$'  # empty
+# Old commit still resolves on 2026-11-01:
+# https://raw.githubusercontent.com/Atik203/Resume-Studio/01646d6/Md.Atikur-Rahaman-CV.pdf -> 200
+```
+
+A local safety bundle was created before the rewrite at
+`%TEMP%\opencode\resume-studio-pre-rewrite-2026-11-01.bundle`.
 
 ## What was removed from tracking
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or exposed personal data
+    url: https://github.com/Atik203/Resume-Studio/security/advisories/new
+    about: Report vulnerabilities and private-data exposure privately.
+  - name: Support and setup help
+    url: https://github.com/Atik203/Resume-Studio/blob/main/SUPPORT.md
+    about: Read the support guide before opening an issue.
