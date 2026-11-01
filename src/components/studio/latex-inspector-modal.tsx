@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Code2,
   Copy,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { ResolvedVariant, TemplateId } from '@/lib/data';
 import { renderLatex } from '@/lib/latex';
-import { useModalBehavior } from '@/hooks/use-modal-behavior';
+import { DialogShell } from '@/components/ui/dialog';
 
 interface LatexInspectorModalProps {
   isOpen: boolean;
@@ -150,11 +150,6 @@ export function LatexInspectorModal({
     return currentLatex.split('\n');
   }, [currentLatex]);
 
-  const modalRef = useRef<HTMLDivElement>(null);
-  useModalBehavior(modalRef, onClose, isOpen);
-
-  if (!isOpen) return null;
-
   const handleCopy = async () => {
     try {
       if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
@@ -180,8 +175,16 @@ export function LatexInspectorModal({
   };
 
   return (
-    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl h-[88vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl text-foreground overflow-hidden">
+    <DialogShell
+      open={isOpen}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+      title="Live LaTeX Source Inspector and Diff"
+      description="Inspect the exact generated TeX source and compare template output."
+      contentClassName="max-w-5xl w-full h-[88vh] flex flex-col overflow-hidden p-0"
+      overlayClassName="bg-black/80 backdrop-blur-sm"
+    >
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/90">
           <div className="flex items-center gap-3">
@@ -401,7 +404,6 @@ export function LatexInspectorModal({
           </div>
           <span>Pure local generation · Zero network exposure</span>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

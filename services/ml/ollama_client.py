@@ -5,12 +5,14 @@ Zero external API calls, zero telemetry, zero data leaves the machine.
 """
 
 import json
+import os
 import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional, List
 
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen3.5:4b"
+EMBEDDING_MODEL = os.environ.get("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
 
 
 def check_ollama_status(preferred_model: str = DEFAULT_MODEL) -> Dict[str, Any]:
@@ -27,10 +29,13 @@ def check_ollama_status(preferred_model: str = DEFAULT_MODEL) -> Dict[str, Any]:
                 preferred_model in m or m.startswith(preferred_model)
                 for m in models
             )
+            embedding_available = any(EMBEDDING_MODEL in m for m in models)
             return {
                 "online": True,
                 "preferred_model": preferred_model,
                 "model_available": is_model_present,
+                "embedding_model": EMBEDDING_MODEL,
+                "embedding_available": embedding_available,
                 "installed_models": models,
             }
     except Exception as e:
@@ -38,9 +43,31 @@ def check_ollama_status(preferred_model: str = DEFAULT_MODEL) -> Dict[str, Any]:
             "online": False,
             "preferred_model": preferred_model,
             "model_available": False,
+            "embedding_model": EMBEDDING_MODEL,
+            "embedding_available": False,
             "installed_models": [],
             "error": str(e),
         }
+
+
+def get_embedding(text: str, model: str = EMBEDDING_MODEL, timeout_sec: int = 5) -> Optional[List[float]]:
+    """Return an Ollama embedding, or None when the model/daemon is unavailable."""
+    try:
+        payload = json.dumps({"model": model, "prompt": text}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{OLLAMA_BASE_URL}/api/embeddings",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            embedding = data.get("embedding")
+            if isinstance(embedding, list) and embedding:
+                return [float(value) for value in embedding]
+    except Exception:
+        return None
+    return None
 
 
 def polish_bullet_with_qwen(

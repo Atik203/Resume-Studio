@@ -6,7 +6,7 @@ Computes semantic relevance, skill overlap, and missing keyword telemetry betwee
 from collections import Counter
 import math
 import re
-from typing import Dict, List, Set, Any
+from typing import Dict, List, Optional, Set, Any
 from taxonomy import extract_skills, SKILL_TAXONOMY
 
 
@@ -49,7 +49,23 @@ def compute_tf_idf_cosine(doc1: str, doc2: str) -> float:
     return dot_product / (norm1 * norm2)
 
 
-def match_resume_to_job(resume_text: str, job_description: str) -> Dict[str, Any]:
+def cosine_similarity(vector_a: List[float], vector_b: List[float]) -> float:
+    """Cosine similarity for equal-length embedding vectors."""
+    if not vector_a or not vector_b or len(vector_a) != len(vector_b):
+        return 0.0
+    dot = sum(a * b for a, b in zip(vector_a, vector_b))
+    norm_a = math.sqrt(sum(a * a for a in vector_a))
+    norm_b = math.sqrt(sum(b * b for b in vector_b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def match_resume_to_job(
+    resume_text: str,
+    job_description: str,
+    embedding_similarity: Optional[float] = None,
+) -> Dict[str, Any]:
     """
     Analyze resume alignment against a job description.
     Returns composite match score (0-100), matched skills, missing skills, and category statistics.
@@ -64,6 +80,7 @@ def match_resume_to_job(resume_text: str, job_description: str) -> Dict[str, Any
             "resume_skills_detected": [],
             "total_jd_skills": 0,
             "category_breakdown": {},
+            "semantic_source": "lexical",
         }
 
     # Extract structured taxonomy skills
@@ -85,9 +102,16 @@ def match_resume_to_job(resume_text: str, job_description: str) -> Dict[str, Any
         else 100.0
     )
 
-    # Semantic full-text similarity (Vector Cosine)
-    semantic_sim = compute_tf_idf_cosine(resume_text, job_description)
-    semantic_score = min(100.0, max(0.0, semantic_sim * 200.0))
+    # Semantic full-text similarity. Use local Ollama embeddings when both
+    # vectors are available; otherwise fall back to deterministic lexical overlap.
+    if embedding_similarity is not None:
+        semantic_sim = max(-1.0, min(1.0, embedding_similarity))
+        semantic_score = min(100.0, max(0.0, semantic_sim * 100.0))
+        semantic_source = "ollama-embedding"
+    else:
+        semantic_sim = compute_tf_idf_cosine(resume_text, job_description)
+        semantic_score = min(100.0, max(0.0, semantic_sim * 200.0))
+        semantic_source = "lexical"
 
     # Composite ATS Score:
     # 70% weighted on explicit core tech skill matches + 30% on full contextual keyword similarity
@@ -138,4 +162,5 @@ def match_resume_to_job(resume_text: str, job_description: str) -> Dict[str, Any
         "missing_skills": missing_skills,
         "resume_skills_detected": sorted(list(resume_skill_names)),
         "category_breakdown": categories,
+        "semantic_source": semantic_source,
     }

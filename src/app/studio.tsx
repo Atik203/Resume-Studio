@@ -17,43 +17,12 @@ import { useCompilePreview } from '@/hooks/use-compile-preview';
 import { useEntryDrag, useSectionDrag } from '@/hooks/use-drag-reorder';
 import { Button } from '@/components/ui/button';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
-import Link from 'next/link';
 import { getDesignPreset, type DesignPresetId } from '@/lib/design-presets';
 import {
-  Download,
   Eye,
   FileEdit,
   Plus,
-  RefreshCw,
-  Sliders,
-  Sparkles,
-  Code2,
-  History,
-  FileArchive,
-  ChevronDown,
-  MoreVertical,
-  FileText,
-  Check,
-  Sun,
-  Moon,
-  Home,
-  PanelLeft,
-  User,
-  Zap,
-  Briefcase,
-  FolderGit2,
-  GraduationCap,
-  Layers,
 } from 'lucide-react';
-
-function getSectionChipIcon(id: string) {
-  const lower = id.toLowerCase();
-  if (lower.includes('skill')) return <Zap size={12} className="text-amber-500 shrink-0" />;
-  if (lower.includes('exp') || lower.includes('work')) return <Briefcase size={12} className="text-emerald-500 shrink-0" />;
-  if (lower.includes('proj')) return <FolderGit2 size={12} className="text-purple-500 shrink-0" />;
-  if (lower.includes('edu')) return <GraduationCap size={12} className="text-sky-500 shrink-0" />;
-  return <Layers size={12} className="text-neutral-400 shrink-0" />;
-}
 
 import { Sidebar } from '@/components/studio/sidebar';
 import { ProfileCard } from '@/components/studio/profile-card';
@@ -67,7 +36,10 @@ import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
 import { SnapshotModal } from '@/components/studio/snapshot-modal';
 import { PreviewPane } from '@/components/studio/preview-pane';
-import { useDismiss } from '@/hooks/use-dismiss';
+import { Topbar } from '@/components/studio/topbar';
+import { EditorHeader } from '@/components/studio/editor-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { resolveVariant, type ResumeSnapshot } from '@/lib/data';
 
 const PREMADE_SECTIONS = [
@@ -101,21 +73,13 @@ export default function Studio() {
   const [showSnapshotModal, setShowSnapshotModal] = useState(false);
   const [exportingZip, setExportingZip] = useState(false);
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
-  const [showDraftDropdown, setShowDraftDropdown] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const dragX = useRef<number | null>(null);
-  const draftMenuRef = useRef<HTMLDivElement | null>(null);
-  const exportMenuRef = useRef<HTMLDivElement | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
-
-  useDismiss(draftMenuRef, () => setShowDraftDropdown(false), showDraftDropdown);
-  useDismiss(exportMenuRef, () => setShowExportMenu(false), showExportMenu);
-  useDismiss(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
   const { saveState, saveStateText, markSaving, markLoaded, reportLoadError } = useAutosave(project, ready);
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const {
     pdfUrl,
@@ -125,7 +89,6 @@ export default function Studio() {
     compiledRevision,
     busy,
     message,
-    setMessage,
     setPageCount,
     compile,
     invalidate: invalidatePreview,
@@ -149,11 +112,11 @@ export default function Studio() {
         markLoaded();
       })
       .catch(err => {
-        setMessage(`Local storage error: ${err instanceof Error ? err.message : 'unknown error'}`);
+        toast({ title: 'Local storage error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'error' });
         reportLoadError();
       })
       .finally(() => setReady(true));
-  }, [setMessage, markLoaded, reportLoadError]);
+  }, [toast, markLoaded, reportLoadError]);
 
   useEffect(() => {
     if (!ready) return;
@@ -345,7 +308,18 @@ export default function Studio() {
     }));
   }
 
-  function removeEntry(entryId: string) {
+  async function removeEntry(entryId: string) {
+    const entry = selectedEntries.get(entryId);
+    const approved = await confirm({
+      title: 'Remove this entry?',
+      description: entry?.title
+        ? `"${entry.title}" will be removed from this draft. The master library entry is preserved.`
+        : 'This entry will be removed from this draft. The master library entry is preserved.',
+      confirmLabel: 'Remove entry',
+      destructive: true,
+    });
+    if (!approved) return;
+
     updateVariant(v => ({
       ...v,
       selectedEntryIds: v.selectedEntryIds.filter(id => id !== entryId),
@@ -387,20 +361,24 @@ export default function Studio() {
     }));
 
     setShowAddSectionMenu(false);
-    setMessage(`Added ${premade.label} section.`);
+    toast({ title: 'Section added', description: premade.label, variant: 'success' });
     setTimeout(() => {
       document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
   }
 
-  function deleteSection(sectionId: string, sectionLabel: string) {
+  async function deleteSection(sectionId: string, sectionLabel: string) {
     if (active.sections.length <= 1) {
-      alert('You must keep at least one section in the resume.');
+      toast({ title: 'Cannot delete section', description: 'Keep at least one section in the draft.', variant: 'error' });
       return;
     }
-    if (!window.confirm(`Delete section "${sectionLabel}" from this draft?`)) {
-      return;
-    }
+    const approved = await confirm({
+      title: 'Delete this section?',
+      description: `"${sectionLabel}" and its placements will be removed from this draft. Master library entries are preserved.`,
+      confirmLabel: 'Delete section',
+      destructive: true,
+    });
+    if (!approved) return;
 
     const section = active.sections.find(s => s.id === sectionId);
     const entryIdsToRemove = new Set(section?.entryIds ?? []);
@@ -410,7 +388,7 @@ export default function Studio() {
       sections: v.sections.filter(s => s.id !== sectionId),
       selectedEntryIds: v.selectedEntryIds.filter(id => !entryIdsToRemove.has(id)),
     }));
-    setMessage(`Removed section "${sectionLabel}".`);
+    toast({ title: 'Section removed', description: sectionLabel, variant: 'success' });
   }
 
   function addSkillToResume(skillName: string) {
@@ -479,7 +457,7 @@ export default function Studio() {
         variants: newVariants,
       };
     });
-    setMessage(`Added "${skillName}" to technical skills.`);
+    toast({ title: 'Skill added', description: skillName, variant: 'success' });
   }
 
   function updateEntryBullet(entryId: string, bulletIndex: number, newText: string) {
@@ -492,7 +470,7 @@ export default function Studio() {
       });
       return { ...p, library: { ...p.library, entries: newEntries } };
     });
-    setMessage('Applied orphan trim to bullet point.');
+    toast({ title: 'Orphan trim applied', variant: 'success' });
   }
 
   function sectionIsCollapsed(sectionId: string) {
@@ -668,7 +646,7 @@ export default function Studio() {
     }));
 
     setShowNewDraftModal(false);
-    setMessage(`Created new ${isCv ? 'Academic CV' : 'Software Resume'} draft: "${name}".`);
+    toast({ title: 'Draft created', description: name, variant: 'success' });
   }
 
   function duplicateDraft(variantId: string) {
@@ -693,17 +671,23 @@ export default function Studio() {
       variants: nextVariants,
       activeVariantId: copy.id,
     }));
-    setMessage(`Created duplicate draft: "${copy.name}".`);
+    toast({ title: 'Draft duplicated', description: copy.name, variant: 'success' });
   }
 
-  function deleteDraft(variantId: string) {
+  async function deleteDraft(variantId: string) {
     if (project.variants.length <= 1) {
-      alert('You must keep at least one resume or CV draft.');
+      toast({ title: 'Cannot delete draft', description: 'Keep at least one resume or CV draft.', variant: 'error' });
       return;
     }
     const target = project.variants.find(v => v.id === variantId);
     if (!target) return;
-    if (!window.confirm(`Delete draft "${target.name}"? This cannot be undone.`)) return;
+    const approved = await confirm({
+      title: 'Delete this draft?',
+      description: `"${target.name}" will be permanently deleted. This cannot be undone.`,
+      confirmLabel: 'Delete draft',
+      destructive: true,
+    });
+    if (!approved) return;
 
     const nextVariants = project.variants.filter(v => v.id !== variantId);
     const nextActiveId = project.activeVariantId === variantId ? nextVariants[0].id : project.activeVariantId;
@@ -713,7 +697,7 @@ export default function Studio() {
       variants: nextVariants,
       activeVariantId: nextActiveId,
     }));
-    setMessage(`Deleted draft "${target.name}".`);
+    toast({ title: 'Draft deleted', description: target.name, variant: 'success' });
   }
 
   const exportPdf = useCallback(() => {
@@ -754,11 +738,15 @@ export default function Studio() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to export LaTeX package');
+      toast({
+        title: 'LaTeX export failed',
+        description: err instanceof Error ? err.message : 'Failed to export LaTeX package',
+        variant: 'error',
+      });
     } finally {
       setExportingZip(false);
     }
-  }, [active.id, resolvedActive.profile.name, project]);
+  }, [active.id, resolvedActive.profile.name, project, toast]);
 
   const handleRestoreProject = useCallback((restoredProject: ProjectData) => {
     setProject(restoredProject);
@@ -803,321 +791,68 @@ export default function Studio() {
     anchor.download = `resume-studio-backup-v${project.version}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setMessage('Exported JSON backup successfully.');
+    toast({ title: 'Backup exported', variant: 'success' });
   }
 
-  function importBackup(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function importBackup(e: ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const parsed = JSON.parse(ev.target?.result as string);
-        const validated = validateProject(parsed);
-        setProject(validated);
-        setMessage('Project restored from backup.');
-      } catch (err) {
-        setMessage(`Import failed: ${err instanceof Error ? err.message : 'invalid backup format'}`);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const validated = validateProject(parsed);
+      const approved = await confirm({
+        title: 'Replace the current project?',
+        description:
+          'This import replaces the project in this browser profile. Export a backup first if you want to keep the current version.',
+        confirmLabel: 'Replace project',
+        destructive: true,
+      });
+      if (!approved) return;
+      setProject(validated);
+      toast({ title: 'Project restored', variant: 'success' });
+    } catch (err) {
+      toast({
+        title: 'Import failed',
+        description: err instanceof Error ? err.message : 'Invalid backup format',
+        variant: 'error',
+      });
+    } finally {
+      input.value = '';
+    }
   }
 
   return (
     <main
       className={`app-shell ${preferences.theme === 'dark' ? 'dark' : ''}`}
     >
-      {/* 0. FLOWCV-GRADE FLOATING TOPBAR */}
-      <header className="studio-topbar">
-        <div className="studio-topbar-left">
-          <Link href="/" className="studio-brand" title="Return to Landing Page">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-xs">
-              <FileText size={17} />
-            </div>
-            <span className="font-extrabold text-sm text-neutral-900 dark:text-neutral-100 tracking-tight hidden sm:inline">
-              Resume Studio
-            </span>
-          </Link>
-
-          {/* Dedicated Sidebar Toggle Button */}
-          <button
-            type="button"
-            className="studio-icon-btn hidden md:inline-flex"
-            onClick={() =>
-              setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))
-            }
-            title={preferences.sidebarCollapsed ? 'Expand library sidebar' : 'Collapse library sidebar'}
-            aria-label="Toggle library sidebar"
-          >
-            <PanelLeft size={16} />
-          </button>
-
-          {/* Floating Pill Navigation Tabs */}
-          <div className="studio-nav-pills" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activePane === 'editor'}
-              className={`studio-pill-btn ${activePane === 'editor' ? 'active' : ''}`}
-              onClick={() => setActivePane('editor')}
-            >
-              <FileEdit size={13} />
-              <span>Content</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activePane === 'design'}
-              className={`studio-pill-btn ${activePane === 'design' ? 'active' : ''}`}
-              onClick={() => setActivePane('design')}
-            >
-              <Sliders size={13} />
-              <span>Customize</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activePane === 'ats'}
-              className={`studio-pill-btn ${activePane === 'ats' ? 'active' : ''}`}
-              onClick={() => setActivePane('ats')}
-            >
-              <Sparkles size={13} />
-              <span>AI Tools</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Draft Switcher + Primary Download + More Menu */}
-        <div className="studio-topbar-right">
-          {/* Draft Selector Dropdown */}
-          <div className="relative" ref={draftMenuRef}>
-            <button
-              type="button"
-              className="draft-selector-btn"
-              onClick={() => setShowDraftDropdown(v => !v)}
-              title="Switch or manage drafts"
-            >
-              <span className="truncate max-w-[130px] sm:max-w-[180px]">{active.name}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {showDraftDropdown && (
-              <div
-                className="absolute right-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setShowDraftDropdown(false)}
-              >
-                <div className="px-3 py-1.5 font-bold text-[11px] text-neutral-400 uppercase tracking-wider">
-                  Resume & CV Drafts
-                </div>
-                {project.variants.map(v => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => {
-                      updateProject(p => ({ ...p, activeVariantId: v.id }));
-                      setShowDraftDropdown(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
-                      v.id === active.id ? 'font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30' : ''
-                    }`}
-                  >
-                    <span className="truncate">{v.name}</span>
-                    {v.id === active.id && <Check size={14} className="text-emerald-600 dark:text-emerald-400" />}
-                  </button>
-                ))}
-                <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNewDraftModal(true);
-                      setShowDraftDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-emerald-700 dark:text-emerald-400 font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-1.5"
-                  >
-                    <Plus size={13} />
-                    <span>Create New Draft…</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      duplicateDraft(active.id);
-                      setShowDraftDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                  >
-                    Duplicate Current Draft
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Primary Download Split Button */}
-          <div className="relative inline-flex items-center" ref={exportMenuRef}>
-            <Button
-              className="download-primary-btn"
-              disabled={busy}
-              onClick={pdfFile ? exportPdf : compile}
-              title="Download Verified PDF (Ctrl+S)"
-            >
-              {busy ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-              <span>{busy ? 'Compiling…' : 'Download'}</span>
-            </Button>
-            <button
-              type="button"
-              className="download-split-arrow"
-              onClick={() => setShowExportMenu(v => !v)}
-              title="Export options"
-            >
-              <ChevronDown size={13} />
-            </button>
-
-            {showExportMenu && (
-              <div
-                className="absolute right-0 top-full mt-1.5 w-56 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setShowExportMenu(false)}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportPdf();
-                    setShowExportMenu(false);
-                  }}
-                  disabled={!pdfFile}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 font-semibold text-neutral-900 dark:text-neutral-100"
-                >
-                  <Download size={13} className="text-emerald-600" />
-                  <span>Download Verified PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportLatexZip();
-                    setShowExportMenu(false);
-                  }}
-                  disabled={exportingZip}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <FileArchive size={13} className="text-amber-500" />
-                  <span>Export Standalone LaTeX (.zip)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    compile();
-                    setShowExportMenu(false);
-                  }}
-                  disabled={busy}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 border-t border-neutral-100 dark:border-neutral-800"
-                >
-                  <RefreshCw size={13} className="text-sky-500" />
-                  <span>Force Recompile (Ctrl+B)</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* More Menu (⋮) */}
-          <div className="relative" ref={moreMenuRef}>
-            <button
-              type="button"
-              className="studio-icon-btn"
-              onClick={() => setShowMoreMenu(v => !v)}
-              title="Developer tools & backups"
-            >
-              <MoreVertical size={16} />
-            </button>
-
-            {showMoreMenu && (
-              <div
-                className="absolute right-0 mt-1.5 w-56 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setShowMoreMenu(false)}
-              >
-                <div className="px-3 py-1 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">
-                  Developer & History
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLatexInspectorModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <Code2 size={13} className="text-emerald-500" />
-                  <span>Inspect LaTeX Source</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSnapshotModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <History size={13} className="text-sky-500" />
-                  <span>Snapshot Time Machine</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPageFitModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <Sparkles size={13} className="text-purple-500" />
-                  <span>Page-Fit Assistant</span>
-                </button>
-
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                <div className="px-3 py-1 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">
-                  Project Backup
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportBackup();
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                >
-                  Export JSON Backup
-                </button>
-                <label className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer block">
-                  <span>Import JSON Backup</span>
-                  <input type="file" accept="application/json" onChange={importBackup} className="hidden" />
-                </label>
-
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreferences(p => ({
-                      ...p,
-                      theme: p.theme === 'dark' ? 'light' : 'dark',
-                    }));
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-between"
-                >
-                  <span>Toggle Dark Theme</span>
-                  {preferences.theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
-                </button>
-
-                <Link
-                  href="/"
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-500 border-t border-neutral-100 dark:border-neutral-800"
-                >
-                  <Home size={13} />
-                  <span>Public Landing Page</span>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <Topbar
+        activePane={activePane}
+        onPaneChange={setActivePane}
+        libraryCollapsed={preferences.sidebarCollapsed}
+        onToggleLibrary={() => setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))}
+        drafts={project.variants}
+        activeDraftId={active.id}
+        activeDraftName={active.name}
+        onSelectDraft={(id: string) => updateProject(p => ({ ...p, activeVariantId: id }))}
+        onNewDraft={() => setShowNewDraftModal(true)}
+        onDuplicateDraft={duplicateDraft}
+        hasPdf={Boolean(pdfFile)}
+        busy={busy}
+        exportingZip={exportingZip}
+        onDownloadPdf={exportPdf}
+        onCompile={compile}
+        onExportLatex={exportLatexZip}
+        onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
+        onOpenSnapshots={() => setShowSnapshotModal(true)}
+        onOpenPageFit={() => setShowPageFitModal(true)}
+        onExportBackup={exportBackup}
+        onImportBackup={importBackup}
+        onToggleTheme={() => setPreferences(p => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
+        theme={preferences.theme}
+      />
 
       {/* Mobile Workspace Tabs */}
       <div className="mobile-workspace-tabs" role="tablist" aria-label="Mobile workspace view">
@@ -1178,75 +913,16 @@ export default function Studio() {
 
         {/* 2. CENTER FLUID EDITOR COLUMN */}
         <section className="editor-column" aria-label="Document editor">
-          {/* Context-Aware Editor Header */}
-          {activePane === 'editor' ? (
-            <div className="editor-header">
-              <div className="editor-header-main">
-                <div className="editor-breadcrumb">
-                  <span>{active.mode === 'cv' ? 'Curriculum Vitae' : 'Resume'}</span>
-                  <span>·</span>
-                  <span>
-                    {active.targetPages} {active.targetPages === 1 ? 'Page Target' : 'Pages Target'}
-                  </span>
-                </div>
-                <input
-                  className="editor-title-input"
-                  value={active.name}
-                  aria-label="Draft name"
-                  placeholder="Name your resume draft"
-                  onChange={e => updateVariant(v => ({ ...v, name: e.target.value }))}
-                />
-                {/* Section Quick Nav Chips */}
-                <div className="section-quick-nav" aria-label="Jump to section">
-                  <button
-                    type="button"
-                    className="section-chip"
-                    onClick={() => scrollToSection('profile')}
-                  >
-                    <User size={12} className="text-emerald-500 shrink-0" />
-                    <span>Profile</span>
-                  </button>
-                  {active.sections.map(section => (
-                    <button
-                      key={section.id}
-                      type="button"
-                      className="section-chip"
-                      onClick={() => scrollToSection(section.id)}
-                    >
-                      {getSectionChipIcon(section.id)}
-                      <span>{section.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : activePane === 'design' ? (
-            <div className="editor-header design-header">
-              <div className="editor-header-main">
-                <div className="editor-breadcrumb">
-                  <span>Document Styling</span>
-                  <span>·</span>
-                  <span>Template: {active.templateId}</span>
-                </div>
-                <h2 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
-                  Design, Typography & Spacing
-                </h2>
-              </div>
-            </div>
-          ) : (
-            <div className="editor-header ats-header">
-              <div className="editor-header-main">
-                <div className="editor-breadcrumb">
-                  <span>Intelligence & Matcher</span>
-                  <span>·</span>
-                  <span>Local GPU Inference</span>
-                </div>
-                <h2 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
-                  ATS Matcher & Keyword Optimizer
-                </h2>
-              </div>
-            </div>
-          )}
+          <EditorHeader
+            activePane={activePane}
+            mode={active.mode}
+            targetPages={active.targetPages}
+            templateId={active.templateId}
+            name={active.name}
+            sections={active.sections}
+            onRename={(name: string) => updateVariant(v => ({ ...v, name }))}
+            onSectionClick={scrollToSection}
+          />
 
           {/* Editor Content Area */}
           {activePane === 'editor' ? (
@@ -1534,7 +1210,7 @@ export default function Studio() {
         onSave={dataUrl => {
           editProfilePhoto(dataUrl);
           setShowPhotoModal(false);
-          setMessage('Profile photo updated.');
+          toast({ title: 'Profile photo updated', variant: 'success' });
         }}
       />
 
@@ -1547,7 +1223,7 @@ export default function Studio() {
         isOverflowing={overflow}
         onApplyDesign={updatedDesign => {
           updateVariant(v => ({ ...v, design: updatedDesign }));
-          setMessage('Applied page-fit spacing optimizations.');
+          toast({ title: 'Page-fit spacing applied', variant: 'success' });
         }}
         onUpdateEntryBullet={updateEntryBullet}
       />

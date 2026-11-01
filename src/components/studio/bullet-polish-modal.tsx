@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Sparkles,
   Check,
@@ -15,7 +15,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import type { PolishBulletResponse, PolishVariation } from '@/lib/ml-types';
-import { useModalBehavior } from '@/hooks/use-modal-behavior';
+import { DialogShell } from '@/components/ui/dialog';
 
 interface BulletPolishModalProps {
   isOpen: boolean;
@@ -41,8 +41,6 @@ export function BulletPolishModal({
   const [data, setData] = useState<PolishBulletResponse | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [appliedKey, setAppliedKey] = useState<string | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  useModalBehavior(modalRef, onClose, isOpen);
 
   // Fetch polish variations on open or when bulletText changes
   useEffect(() => {
@@ -92,8 +90,6 @@ export function BulletPolishModal({
       isMounted = false;
     };
   }, [isOpen, bulletText, entryTitle, entrySubtitle]);
-
-  if (!isOpen) return null;
 
   const handleCopy = async (text: string, key: string) => {
     try {
@@ -153,8 +149,16 @@ export function BulletPolishModal({
   };
 
   return (
-    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl text-foreground overflow-hidden">
+    <DialogShell
+      open={isOpen}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+      title="Bullet Polish"
+      description="Generate three bullet variations and apply one explicitly."
+      contentClassName="max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden p-0"
+      overlayClassName="bg-black/75 backdrop-blur-sm"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/80">
           <div className="flex items-center gap-3">
@@ -418,7 +422,6 @@ export function BulletPolishModal({
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

@@ -7,6 +7,7 @@ import type { NextRequest } from 'next/server.js';
 import { PDFDict, PDFDocument, PDFName } from 'pdf-lib';
 import { resolveVariant, validateProject } from '../../../lib/data.ts';
 import { renderLatex, safeUrl } from '../../../lib/latex.ts';
+import { explainCompileFailure } from '../../../lib/compile-errors.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,10 +72,15 @@ export async function POST(request: NextRequest) {
     if (request.signal.aborted) return new NextResponse(null, { status: 499 });
     if (compile.code !== 0) {
       const missing = (compile as unknown as { error?: NodeJS.ErrnoException }).error?.code === 'ENOENT';
-      const message = missing ? `pdflatex was not found. Add TeX Live's bin directory to PATH or set PDFLATEX_PATH to pdflatex.exe. Configured executable: ${executable}`
-        : /timeout|timed out/i.test(compile.log) ? 'pdflatex timed out after 30 seconds. Check TeX Live and reduce the document workload.'
-          : `pdflatex could not compile this resume. Check unsupported characters or LaTeX errors.\n${safeLog(compile.log, workDir)}`;
-      return NextResponse.json({ error: message }, { status: 422 });
+      const message = explainCompileFailure({
+        log: compile.log,
+        executable,
+        errorCode: missing ? 'ENOENT' : undefined,
+      });
+      const detail = message.includes('could not compile')
+        ? `${message}\n${safeLog(compile.log, workDir)}`
+        : message;
+      return NextResponse.json({ error: detail }, { status: 422 });
     }
     const pdfPath = path.join(workDir, 'resume.pdf');
     const pdf = await readFile(pdfPath).catch(() => Buffer.alloc(0));

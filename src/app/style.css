@@ -22,6 +22,7 @@
   --accent: #e5f1ea;
   --accent-foreground: #185c3d;
   --destructive: #b3382c;
+  --destructive-foreground: #ffffff;
   --border: #e2e8e3;
   --input: #e2e8e3;
   --ring: #2e8b5e;
@@ -68,6 +69,7 @@
   --accent: #1e3327;
   --accent-foreground: #6ad19e;
   --destructive: #e06c5f;
+  --destructive-foreground: #1a0d0b;
   --border: #25332a;
   --input: #233027;
   --ring: #46b882;
@@ -102,10 +104,18 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -3314,4 +3324,24 @@ select option {
 
 .animate-fade-in {
   animation: fadeIn 0.35s ease-out both;
+}
+
+/* Global focus and motion accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--studio-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
