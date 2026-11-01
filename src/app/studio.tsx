@@ -935,9 +935,7 @@ export default function Studio() {
 
   return (
     <main
-      className={`app-shell ${preferences.sidebarCollapsed ? 'sidebar-hidden' : ''} ${
-        preferences.theme === 'dark' ? 'dark' : ''
-      }`}
+      className={`app-shell ${preferences.theme === 'dark' ? 'dark' : ''}`}
     >
       {/* 0. FLOWCV-GRADE FLOATING TOPBAR */}
       <header className="studio-topbar">
