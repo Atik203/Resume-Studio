@@ -1,7 +1,6 @@
 'use client';
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 import {
   ContactLink,
   ContentEntry,
@@ -12,10 +11,11 @@ import {
   validateProject,
 } from '@/lib/data';
 import { fixtureProject } from '@/lib/fixture';
-import { loadProject, saveProject } from '@/lib/storage';
-import { decodePdfBase64, parseCompileResponseMetadata } from '@/lib/compile-response';
+import { loadProject } from '@/lib/storage';
+import { useAutosave } from '@/hooks/use-autosave';
+import { useCompilePreview } from '@/hooks/use-compile-preview';
+import { useEntryDrag, useSectionDrag } from '@/hooks/use-drag-reorder';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
 import Link from 'next/link';
 import { getDesignPreset, type DesignPresetId } from '@/lib/design-presets';
@@ -66,6 +66,8 @@ import { NewDraftModal } from '@/components/studio/new-draft-modal';
 import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
 import { SnapshotModal } from '@/components/studio/snapshot-modal';
+import { PreviewPane } from '@/components/studio/preview-pane';
+import { useDismiss } from '@/hooks/use-dismiss';
 import { resolveVariant, type ResumeSnapshot } from '@/lib/data';
 
 const PREMADE_SECTIONS = [
@@ -79,27 +81,11 @@ const PREMADE_SECTIONS = [
   { id: 'custom', label: 'Custom Section', defaultTitle: 'New Item', icon: '📝' },
 ];
 
-const CompiledPdfViewer = dynamic(() => import('@/components/pdf/compiled-pdf-viewer'), {
-  ssr: false,
-  loading: () => <div className="pdf-viewer-state">Loading local PDF viewer…</div>,
-});
-
 export default function Studio() {
   const [project, setProject] = useState<ProjectData>(() => structuredClone(fixtureProject));
   const [ready, setReady] = useState(false);
-  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'idle' | 'error'>('idle');
-  const [saveStateText, setSaveStateText] = useState('Loading library…');
-  const [pdfUrl, setPdfUrl] = useState('');
-  const [pdfFile, setPdfFile] = useState<Blob | null>(null);
-  const [pageCount, setPageCount] = useState<string>('');
-  const [overflow, setOverflow] = useState(false);
-  const [compiledRevision, setCompiledRevision] = useState(-1);
   const [revision, setRevision] = useState(0);
   const projectRevision = useRef(0);
-  const compileController = useRef<AbortController | null>(null);
-  const compileRequestId = useRef(0);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
   const [activePane, setActivePane] = useState<'editor' | 'design' | 'ats'>('editor');
   const [designMode, setDesignMode] = useState<'quick' | 'advanced'>('quick');
   const [preferences, setPreferences] = useState<UiPreferences>(defaultUiPreferences);
@@ -119,15 +105,38 @@ export default function Studio() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const dragX = useRef<number | null>(null);
+  const draftMenuRef = useRef<HTMLDivElement | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
-  // Drag and drop state
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
-  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null);
-  const [draggedEntryInfo, setDraggedEntryInfo] = useState<{ sectionId: string; index: number } | null>(null);
-  const [dragOverEntryIndex, setDragOverEntryIndex] = useState<number | null>(null);
+  useDismiss(draftMenuRef, () => setShowDraftDropdown(false), showDraftDropdown);
+  useDismiss(exportMenuRef, () => setShowExportMenu(false), showExportMenu);
+  useDismiss(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
+  const { saveState, saveStateText, markSaving, markLoaded, reportLoadError } = useAutosave(project, ready);
+
+  const {
+    pdfUrl,
+    pdfFile,
+    pageCount,
+    overflow,
+    compiledRevision,
+    busy,
+    message,
+    setMessage,
+    setPageCount,
+    compile,
+    invalidate: invalidatePreview,
+  } = useCompilePreview({
+    project,
+    variantId: active.id,
+    revision,
+    ready,
+    autoPreview: preferences.autoPreview,
+    previewDelayMs: preferences.previewDelayMs,
+  });
 
   useEffect(() => {
     Promise.resolve()
@@ -137,16 +146,14 @@ export default function Studio() {
       })
       .then(saved => {
         if (saved) setProject(validateProject(saved));
-        setSaveState('saved');
-        setSaveStateText('Saved locally');
+        markLoaded();
       })
       .catch(err => {
         setMessage(`Local storage error: ${err instanceof Error ? err.message : 'unknown error'}`);
-        setSaveState('error');
-        setSaveStateText('Storage error');
+        reportLoadError();
       })
       .finally(() => setReady(true));
-  }, []);
+  }, [setMessage, markLoaded, reportLoadError]);
 
   useEffect(() => {
     if (!ready) return;
@@ -168,43 +175,21 @@ export default function Studio() {
   }, [preferences, ready]);
 
   useEffect(() => {
-    if (!ready) return;
-    const timer = window.setTimeout(() => {
-      setSaveState('saving');
-      setSaveStateText('Saving…');
-      saveProject(project)
-        .then(() => {
-          setSaveState('saved');
-          setSaveStateText('Saved locally');
-        })
-        .catch(err => {
-          setSaveState('error');
-          setSaveStateText(`Save failed: ${err instanceof Error ? err.message : 'error'}`);
-        });
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [project, ready]);
-
-  useEffect(() => {
     // Ensure editor content always resets gracefully to top on variant or pane switch
     const timer = setTimeout(() => {
-      const container = document.querySelector('.editor-content');
+      const container = document.querySelector('.editor-content, .editor-scroll');
       if (container) container.scrollTop = 0;
     }, 40);
     return () => clearTimeout(timer);
   }, [active.id, activePane]);
 
   const updateProject = useCallback((updater: (current: ProjectData) => ProjectData) => {
-    compileController.current?.abort();
+    invalidatePreview();
     projectRevision.current += 1;
     setRevision(projectRevision.current);
-    setPdfFile(null);
-    setPageCount('');
-    setOverflow(false);
-    setSaveState('saving');
-    setSaveStateText('Saving…');
+    markSaving();
     setProject(current => updater(structuredClone(current)));
-  }, []);
+  }, [invalidatePreview, markSaving]);
 
   const updateVariant = useCallback(
     (updater: (variant: ResumeVariant) => ResumeVariant) =>
@@ -214,6 +199,43 @@ export default function Studio() {
       })),
     [updateProject]
   );
+
+  const {
+    draggedIndex: draggedSectionIndex,
+    overIndex: dragOverSectionIndex,
+    onDragStart: onSectionDragStart,
+    onDragOver: onSectionDragOver,
+    onDrop: onSectionDrop,
+    onDragEnd: onSectionDragEnd,
+  } = useSectionDrag((from, to) => {
+    updateVariant(v => {
+      const sections = [...v.sections];
+      const [removed] = sections.splice(from, 1);
+      sections.splice(to, 0, removed);
+      return { ...v, sections };
+    });
+  });
+
+  const {
+    draggedSectionId: draggedEntrySectionId,
+    draggedIndex: draggedEntryIndex,
+    overIndex: dragOverEntryIndex,
+    onDragStart: onEntryDragStart,
+    onDragOver: onEntryDragOver,
+    onDrop: onEntryDrop,
+    onDragEnd: onEntryDragEnd,
+  } = useEntryDrag((sectionId, from, to) => {
+    updateVariant(v => ({
+      ...v,
+      sections: v.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        const ids = [...s.entryIds];
+        const [removed] = ids.splice(from, 1);
+        ids.splice(to, 0, removed);
+        return { ...s, entryIds: ids };
+      }),
+    }));
+  });
 
   const selectedEntries = useMemo(
     () => new Map(project.library.entries.map(entry => [entry.id, entry])),
@@ -536,79 +558,6 @@ export default function Studio() {
     }));
   }
 
-  // Drag and drop handlers
-  function onSectionDragStart(e: React.DragEvent, index: number) {
-    setDraggedSectionIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `section:${index}`);
-  }
-
-  function onSectionDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    if (draggedSectionIndex !== null && draggedSectionIndex !== index) {
-      setDragOverSectionIndex(index);
-    }
-  }
-
-  function onSectionDrop(e: React.DragEvent, targetIndex: number) {
-    e.preventDefault();
-    if (draggedSectionIndex !== null && draggedSectionIndex !== targetIndex) {
-      updateVariant(v => {
-        const sections = [...v.sections];
-        const [removed] = sections.splice(draggedSectionIndex, 1);
-        sections.splice(targetIndex, 0, removed);
-        return { ...v, sections };
-      });
-    }
-    setDraggedSectionIndex(null);
-    setDragOverSectionIndex(null);
-  }
-
-  function onSectionDragEnd() {
-    setDraggedSectionIndex(null);
-    setDragOverSectionIndex(null);
-  }
-
-  function onEntryDragStart(e: React.DragEvent, sectionId: string, index: number) {
-    setDraggedEntryInfo({ sectionId, index });
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `entry:${sectionId}:${index}`);
-  }
-
-  function onEntryDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    if (draggedEntryInfo !== null && draggedEntryInfo.index !== index) {
-      setDragOverEntryIndex(index);
-    }
-  }
-
-  function onEntryDrop(e: React.DragEvent, sectionId: string, targetIndex: number) {
-    e.preventDefault();
-    if (
-      draggedEntryInfo !== null &&
-      draggedEntryInfo.sectionId === sectionId &&
-      draggedEntryInfo.index !== targetIndex
-    ) {
-      updateVariant(v => ({
-        ...v,
-        sections: v.sections.map(s => {
-          if (s.id !== sectionId) return s;
-          const ids = [...s.entryIds];
-          const [removed] = ids.splice(draggedEntryInfo.index, 1);
-          ids.splice(targetIndex, 0, removed);
-          return { ...s, entryIds: ids };
-        }),
-      }));
-    }
-    setDraggedEntryInfo(null);
-    setDragOverEntryIndex(null);
-  }
-
-  function onEntryDragEnd() {
-    setDraggedEntryInfo(null);
-    setDragOverEntryIndex(null);
-  }
-
   // Formatting helpers
   function insertBulletFormatting(entryId: string, prefix: string, suffix: string) {
     const master = selectedEntries.get(entryId);
@@ -767,54 +716,6 @@ export default function Studio() {
     setMessage(`Deleted draft "${target.name}".`);
   }
 
-  const compile = useCallback(async () => {
-    const rev = projectRevision.current;
-    compileController.current?.abort();
-    const controller = new AbortController();
-    compileController.current = controller;
-    const requestId = ++compileRequestId.current;
-    setBusy(true);
-    setMessage('Compiling with local pdflatex…');
-    try {
-      const response = await fetch('/api/compile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project, variantId: active.id }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error ?? 'Compilation failed.');
-      }
-      const metadata = parseCompileResponseMetadata(response);
-      const result = (await response.json()) as { pdfBase64?: unknown };
-      const pdfBytes = decodePdfBase64(result.pdfBase64);
-      const pdfBuffer = new ArrayBuffer(pdfBytes.byteLength);
-      new Uint8Array(pdfBuffer).set(pdfBytes);
-      const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
-      if (rev !== projectRevision.current) {
-        setMessage('The document changed during compilation. Build a fresh preview.');
-        return;
-      }
-      const nextUrl = URL.createObjectURL(blob);
-      setPdfUrl(old => {
-        if (old) URL.revokeObjectURL(old);
-        return nextUrl;
-      });
-      setPdfFile(blob);
-      setCompiledRevision(rev);
-      setPageCount(String(metadata.pageCount));
-      setOverflow(metadata.overflow);
-      setMessage('PDF compiled and verified locally.');
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        setMessage(error instanceof Error ? error.message : 'Compilation failed.');
-      }
-    } finally {
-      if (compileRequestId.current === requestId) setBusy(false);
-    }
-  }, [active.id, project]);
-
   const exportPdf = useCallback(() => {
     if (!pdfFile || !pdfUrl) return;
     const anchor = document.createElement('a');
@@ -894,16 +795,6 @@ export default function Studio() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [compile, exportPdf, pdfFile]);
 
-  // Auto-compile preview on initial mount & debounced changes
-  useEffect(() => {
-    if (!ready) return;
-    if (!preferences.autoPreview) return;
-    const timer = setTimeout(() => {
-      compile();
-    }, preferences.previewDelayMs || 800);
-    return () => clearTimeout(timer);
-  }, [ready, revision, active.id, preferences.autoPreview, preferences.previewDelayMs, compile]);
-
   function exportBackup() {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -935,9 +826,7 @@ export default function Studio() {
 
   return (
     <main
-      className={`app-shell ${preferences.sidebarCollapsed ? 'sidebar-hidden' : ''} ${
-        preferences.theme === 'dark' ? 'dark' : ''
-      }`}
+      className={`app-shell ${preferences.theme === 'dark' ? 'dark' : ''}`}
     >
       {/* 0. FLOWCV-GRADE FLOATING TOPBAR */}
       <header className="studio-topbar">
@@ -1002,7 +891,7 @@ export default function Studio() {
         {/* Right: Draft Switcher + Primary Download + More Menu */}
         <div className="studio-topbar-right">
           {/* Draft Selector Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={draftMenuRef}>
             <button
               type="button"
               className="draft-selector-btn"
@@ -1065,7 +954,7 @@ export default function Studio() {
           </div>
 
           {/* Primary Download Split Button */}
-          <div className="relative inline-flex items-center">
+          <div className="relative inline-flex items-center" ref={exportMenuRef}>
             <Button
               className="download-primary-btn"
               disabled={busy}
@@ -1130,7 +1019,7 @@ export default function Studio() {
           </div>
 
           {/* More Menu (⋮) */}
-          <div className="relative">
+          <div className="relative" ref={moreMenuRef}>
             <button
               type="button"
               className="studio-icon-btn"
@@ -1424,6 +1313,7 @@ export default function Studio() {
                       onEditDesign={patch => editSectionDesign(section.id, patch)}
                       defaultFontSize={active.design.fontSize}
                       defaultDividerWeight={active.design.dividerWeightPt}
+                      defaultDividerWidth={active.design.dividerWidth ?? 'full'}
                       defaultShowDividers={active.design.showDividers}
                     >
                       {/* Entries */}
@@ -1432,10 +1322,10 @@ export default function Studio() {
                         if (!master) return null;
                         const entry = { ...master, ...active.entryOverrides[entryId] };
                         const isEntryDragging =
-                          draggedEntryInfo?.sectionId === section.id && draggedEntryInfo.index === entryIndex;
+                          draggedEntrySectionId === section.id && draggedEntryIndex === entryIndex;
                         const entryDragDirection =
-                          draggedEntryInfo?.sectionId === section.id && dragOverEntryIndex === entryIndex
-                            ? draggedEntryInfo.index < entryIndex
+                          draggedEntrySectionId === section.id && dragOverEntryIndex === entryIndex
+                            ? draggedEntryIndex !== null && draggedEntryIndex < entryIndex
                               ? 'bottom'
                               : 'top'
                             : null;
@@ -1541,23 +1431,27 @@ export default function Studio() {
             </div>
           ) : activePane === 'design' ? (
             /* Design Tab */
-            <DesignTab
-              active={active}
-              designMode={designMode}
-              onChangeDesignMode={setDesignMode}
-              onUpdateVariant={updateVariant}
-              onOpenPageFitModal={() => setShowPageFitModal(true)}
-              onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
-              onExportZip={exportLatexZip}
-              onOpenSnapshots={() => setShowSnapshotModal(true)}
-            />
+            <div className="editor-scroll">
+              <DesignTab
+                active={active}
+                designMode={designMode}
+                onChangeDesignMode={setDesignMode}
+                onUpdateVariant={updateVariant}
+                onOpenPageFitModal={() => setShowPageFitModal(true)}
+                onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
+                onExportZip={exportLatexZip}
+                onOpenSnapshots={() => setShowSnapshotModal(true)}
+              />
+            </div>
           ) : (
             /* ATS Matcher & Robot Simulator Tab */
-            <AtsPanel
-              project={project}
-              activeVariant={active}
-              onAddSkillToResume={addSkillToResume}
-            />
+            <div className="editor-scroll">
+              <AtsPanel
+                project={project}
+                activeVariant={active}
+                onAddSkillToResume={addSkillToResume}
+              />
+            </div>
           )}
         </section>
 
@@ -1603,118 +1497,24 @@ export default function Studio() {
         />
 
         {/* 3. RIGHT FLUID PDF PREVIEW COLUMN */}
-        <section className="preview-column" aria-label="PDF preview and export">
-          {/* Clean FlowCV Preview Status Bar */}
-          <div className="preview-canvas-header flex items-center justify-between px-5 py-3 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
-            <div className="flex items-center gap-2.5">
-              <span className="font-bold text-xs text-neutral-800 dark:text-neutral-200">{active.name}</span>
-              {pageCount && (
-                <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    overflow
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                  }`}
-                >
-                  {pageCount} {pageCount === '1' ? 'Page' : 'Pages'} · {overflow ? 'Over Limit' : 'Verified'}
-                </span>
-              )}
-              <span className="text-[11px] text-neutral-400 hidden sm:inline">
-                {compiledRevision === revision ? '· Up to date' : '· Edits pending'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="text-xs font-semibold text-neutral-500 hover:text-emerald-600 flex items-center gap-1.5 transition-colors"
-                onClick={compile}
-                disabled={busy}
-                title="Compile with local pdflatex (Shortcut: Ctrl+B)"
-              >
-                <RefreshCw size={13} className={busy ? 'animate-spin text-emerald-500' : ''} />
-                <span>{busy ? 'Compiling…' : 'Recompile'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Overflow Alert */}
-          {overflow && (
-            <Alert className="warning">
-              <AlertTitle className="flex items-center justify-between">
-                <span>Target page limit exceeded ({pageCount}/{active.targetPages} pages)</span>
-                <Button
-                  variant="default"
-                  size="icon-xs"
-                  className="h-6 px-2 text-[11px] gap-1 shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={() => setShowPageFitModal(true)}
-                >
-                  <Sparkles size={11} />
-                  <span>Fit to 1 Page</span>
-                </Button>
-              </AlertTitle>
-              <AlertDescription className="text-xs">
-                This draft spills onto Page {pageCount}. All content is preserved in the compiled PDF.
-                Click <strong>Fit to 1 Page</strong> to mathematically micro-tune spacing with zero text loss.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Status / Error Message (Only show genuine alerts, avoid redundant green success line) */}
-          {message && ['failed', 'rejected', 'error', 'not found', 'exception'].some(token => message.toLowerCase().includes(token)) && (
-            <div className="status-message error mx-4 my-2">
-              {message}
-            </div>
-          )}
-
-          {/* PDF Paper Viewer Area */}
-          <div className="paper-area">
-            {pdfUrl ? (
-              <CompiledPdfViewer
-                key={pdfUrl}
-                src={pdfUrl}
-                expectedPageCount={pageCount ? Number(pageCount) : null}
-                overflow={overflow}
-                onPageCountChange={pages => setPageCount(String(pages))}
-              />
-            ) : busy ? (
-              <div className="empty-preview flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 mb-4 animate-spin">
-                  <RefreshCw size={22} />
-                </div>
-                <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-200">Compiling with local pdflatex…</h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Generating verified PDF from your local TeX Live engine</p>
-              </div>
-            ) : (
-              <div className="empty-preview">
-                <div className="paper-illustration" aria-hidden="true">
-                  <strong>{project.library.profile.name || 'Your Name'}</strong>
-                  <span>{project.library.profile.title || 'Professional Title'}</span>
-                  <i />
-                  <b>EXPERIENCE</b>
-                  <i />
-                  <i />
-                  <b>PROJECTS</b>
-                  <i />
-                </div>
-                <h2>Ready when you are</h2>
-                <p>Click below to compile this draft with your local TeX Live installation.</p>
-                <Button className="button primary" onClick={compile} disabled={busy}>
-                  <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
-                  <span>{busy ? 'Compiling…' : 'Build Preview'}</span>
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="preview-footer">
-            <span>● Compiled locally with TeX Live pdflatex</span>
-            <span className="footer-spacer" />
-            <span>
-              {active.design.paper.toUpperCase()} · {active.design.fontSize} pt
-            </span>
-          </div>
-        </section>
+        <PreviewPane
+          draftName={active.name}
+          pageCount={pageCount}
+          overflow={overflow}
+          compiledRevision={compiledRevision}
+          revision={revision}
+          busy={busy}
+          message={message}
+          pdfUrl={pdfUrl}
+          targetPages={active.targetPages}
+          paper={active.design.paper}
+          fontSize={active.design.fontSize}
+          profileName={project.library.profile.name}
+          profileTitle={project.library.profile.title}
+          onCompile={compile}
+          onOpenPageFit={() => setShowPageFitModal(true)}
+          onPageCountChange={pages => setPageCount(String(pages))}
+        />
       </section>
 
       {/* NEW DRAFT MODAL */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Code2,
   Copy,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ResolvedVariant, TemplateId } from '@/lib/data';
 import { renderLatex } from '@/lib/latex';
+import { useModalBehavior } from '@/hooks/use-modal-behavior';
 
 interface LatexInspectorModalProps {
   isOpen: boolean;
@@ -149,12 +150,20 @@ export function LatexInspectorModal({
     return currentLatex.split('\n');
   }, [currentLatex]);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(modalRef, onClose, isOpen);
+
   if (!isOpen) return null;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(currentLatex);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(currentLatex);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.alert('Clipboard access was blocked by the browser. Select the source and copy it manually.');
+    }
   };
 
   const handleDownloadTex = () => {
@@ -171,24 +180,24 @@ export function LatexInspectorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl h-[88vh] flex flex-col bg-[#0f1511] border border-[#233529] rounded-2xl shadow-2xl text-[#e6f4ea] overflow-hidden">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-5xl h-[88vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl text-foreground overflow-hidden">
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#233529] bg-[#141e17]/90">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/90">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
               <Code2 size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white tracking-wide">
+                <h2 className="text-base font-bold text-foreground tracking-wide">
                   Live LaTeX Source Inspector & Diff
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
                   {activeVariant.templateId}
                 </span>
               </div>
-              <p className="text-xs text-[#8ba393]">
+              <p className="text-xs text-muted-foreground">
                 Inspect exact markup generated for TeX Live `pdflatex` compilation
               </p>
             </div>
@@ -198,7 +207,7 @@ export function LatexInspectorModal({
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-[#8ba393] hover:text-white border border-white/10 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors"
               title="Copy LaTeX source to clipboard"
             >
               {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
@@ -208,7 +217,7 @@ export function LatexInspectorModal({
             <button
               type="button"
               onClick={handleDownloadTex}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1d2c22] hover:bg-[#25392c] text-emerald-300 border border-emerald-700/50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-700/50 transition-colors"
               title="Download standalone .tex file"
             >
               <Download size={13} />
@@ -218,19 +227,19 @@ export function LatexInspectorModal({
             <button
               type="button"
               onClick={onExportZip}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-[#09110b] shadow-md transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-white shadow-md transition-all active:scale-95"
               title="Export complete standalone package with assets and data"
             >
               <FileArchive size={13} />
               <span>Export .zip</span>
             </button>
 
-            <div className="w-[1px] h-6 bg-[#233529] mx-1" />
+            <div className="w-[1px] h-6 bg-border mx-1" />
 
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#8ba393] hover:text-white hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
               title="Close"
             >
               <X size={18} />
@@ -239,7 +248,7 @@ export function LatexInspectorModal({
         </div>
 
         {/* Sub-header Tabs & Search */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-[#1b2b20] bg-[#111913] text-xs">
+        <div className="flex items-center justify-between px-6 py-2.5 border-b border-border bg-muted text-xs">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -247,7 +256,7 @@ export function LatexInspectorModal({
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition-colors ${
                 activeTab === 'source'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold'
-                  : 'text-[#8ba393] hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <FileCode size={13} />
@@ -260,7 +269,7 @@ export function LatexInspectorModal({
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition-colors ${
                 activeTab === 'diff'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold'
-                  : 'text-[#8ba393] hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <GitCompare size={13} />
@@ -268,12 +277,12 @@ export function LatexInspectorModal({
             </button>
 
             {activeTab === 'diff' && (
-              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-[#233529]">
-                <span className="text-[#8ba393]">Compare against:</span>
+              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-border">
+                <span className="text-muted-foreground">Compare against:</span>
                 <select
                   value={diffTargetTemplate}
                   onChange={(e) => setDiffTargetTemplate(e.target.value as TemplateId)}
-                  className="bg-[#18231c] text-white border border-[#2b3e32] rounded px-2 py-0.5 text-xs font-mono"
+                  className="bg-muted text-foreground border border-border rounded px-2 py-0.5 text-xs font-mono"
                 >
                   {TEMPLATE_OPTIONS.filter((t) => t.id !== activeVariant.templateId).map((t) => (
                     <option key={t.id} value={t.id}>
@@ -287,19 +296,19 @@ export function LatexInspectorModal({
 
           <div className="flex items-center gap-2">
             <div className="relative flex items-center">
-              <Search size={12} className="absolute left-2.5 text-[#8ba393]" />
+              <Search size={12} className="absolute left-2.5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search LaTeX markup..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-7 pr-3 py-1 bg-[#18231c] text-white placeholder-[#5d7766] border border-[#263a2d] rounded-lg text-xs w-52 focus:outline-none focus:border-emerald-500/50"
+                className="pl-7 pr-3 py-1 bg-muted text-foreground placeholder:text-muted-foreground border border-border rounded-lg text-xs w-52 focus:outline-none focus:border-emerald-500/50"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 text-[#8ba393] hover:text-white"
+                  className="absolute right-2 text-muted-foreground hover:text-foreground"
                 >
                   <X size={11} />
                 </button>
@@ -309,6 +318,7 @@ export function LatexInspectorModal({
         </div>
 
         {/* Code Content Area */}
+        {/* Intentionally dark: code pane stays dark in both themes */}
         <div className="flex-1 overflow-auto bg-[#0a0f0c] font-mono text-[12px] leading-5 select-text p-4">
           {activeTab === 'source' ? (
             <div className="space-y-0.5">
@@ -341,12 +351,12 @@ export function LatexInspectorModal({
             </div>
           ) : (
             <div className="space-y-0.5">
-              <div className="px-2 py-1 mb-2 text-xs text-[#8ba393] bg-[#141e17] rounded border border-[#233529] flex items-center justify-between">
+              <div className="px-2 py-1 mb-2 text-xs text-muted-foreground bg-muted rounded border border-border flex items-center justify-between">
                 <span>
                   Comparing <strong>{activeVariant.templateId}</strong> (current) with{' '}
                   <strong>{diffTargetTemplate}</strong> (target)
                 </span>
-                <span className="text-[11px] font-mono text-[#8ba393]">
+                <span className="text-[11px] font-mono text-muted-foreground">
                   + Added in {diffTargetTemplate} | - Removed from {activeVariant.templateId}
                 </span>
               </div>
@@ -382,7 +392,7 @@ export function LatexInspectorModal({
         </div>
 
         {/* Footer info bar */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-t border-[#1b2b20] bg-[#111913] text-xs text-[#8ba393]">
+        <div className="flex items-center justify-between px-6 py-2.5 border-t border-border bg-muted text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>Encoding: UTF-8</span>
             <span>Compiler: pdflatex</span>

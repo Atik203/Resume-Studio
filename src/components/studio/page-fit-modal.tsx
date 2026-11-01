@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { DesignSettings, ResumeVariant, ProjectData } from '@/lib/data';
 import { optimizePageFit, type SpacingDiff } from '@/lib/page-fit-optimizer';
 import { scanEntryOrphans, type OrphanCandidate } from '@/lib/orphan-hunter';
 import { Button } from '@/components/ui/button';
+import { useModalBehavior } from '@/hooks/use-modal-behavior';
 import {
   Sparkles,
   Maximize2,
@@ -64,6 +65,9 @@ export function PageFitModal({
     return list;
   }, [project, activeVariant]);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(modalRef, onClose, isOpen);
+
   if (!isOpen) return null;
 
   const handleApplyOptimization = () => {
@@ -76,7 +80,7 @@ export function PageFitModal({
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="page-fit-title">
+    <div ref={modalRef} className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="page-fit-title">
       <div className="modal-box page-fit-modal-box">
         {/* Modal Header */}
         <div className="modal-header">

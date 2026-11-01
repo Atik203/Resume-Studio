@@ -9,6 +9,9 @@
     "lint": "eslint .",
     "start": "next start --hostname 127.0.0.1",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:python": "python tests/test_ml_service.py",
+    "golden:update": "node --experimental-strip-types scripts/generate-golden-latex.mjs",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run test:python && npm run build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -25,7 +28,8 @@
     "react-dom": "^19.3.1",
     "react-pdf": "^11.0.0",
     "tailwindcss": "^4.1.0",
-    "tw-animate-css": "^1.3.0"
+    "tw-animate-css": "^1.3.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/jszip": "^3.4.0",

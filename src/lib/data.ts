@@ -1,6 +1,10 @@
+import { entrySchema, profileSchema, variantSchema } from './schema.ts';
+
 export type TemplateId = 't01-simple-ats' | 't02-clean-compact' | 't03-modern-developer' | 't04-academic-cv' | 't05-profile-cv';
 export type DocumentMode = 'resume' | 'cv';
 export type ContactLinkType = 'website' | 'linkedin' | 'github' | 'portfolio' | 'other';
+export type LinkDisplay = 'label' | 'url' | 'both';
+export type DividerWidth = 'full' | 'half' | 'label';
 export type FontFamily = 'serif' | 'sans' | 'latin-modern-serif' | 'latin-modern-sans' | 'tex-gyre-termes' | 'tex-gyre-heros' | 'tex-gyre-pagella' | 'tex-gyre-schola' | 'tex-gyre-cursor';
 export interface ContactLink { type: ContactLinkType; label: string; url: string }
 
@@ -14,6 +18,7 @@ export interface SectionDesignSettings {
   paddingBottomPt?: number;
   showDivider?: boolean;
   dividerWeightPt?: number;
+  dividerWidth?: DividerWidth;
   pageBreakBefore?: boolean;
 }
 
@@ -67,16 +72,24 @@ export interface DesignSettings {
   showEmail: boolean;
   showPhone: boolean;
   showLocation: boolean;
+  showEntryLocations?: boolean;
   showLinks: boolean;
   pageNumbers: boolean;
   sectionGapPt: number;
   entryGapPt: number;
   bulletIndentMm: number;
   dividerWeightPt: number;
+  dividerWidth?: DividerWidth;
   showDividers: boolean;
   showContactIcons: boolean;
+  linkDisplay?: LinkDisplay;
+  linkUnderline?: boolean;
   headerLayout?: HeaderLayout;
   dividerStyle?: DividerStyle;
+  /**
+   * Adds PDF metadata tags (title/author/subject) only; it is not a PDF/A
+   * conformance flag. The field name is kept for backup compatibility.
+   */
   pdfaCompliant?: boolean;
 }
 
@@ -208,60 +221,6 @@ export function resolveVariant(projectInput: ProjectData, variantInput: ResumeVa
 }
 
 function isObject(v: unknown): v is Record<string, unknown> { return !!v && typeof v === 'object' && !Array.isArray(v); }
-function isString(v: unknown): v is string { return typeof v === 'string'; }
-function isLink(v: unknown): v is ContactLink {
-  if (!isObject(v) || !['website', 'linkedin', 'github', 'portfolio', 'other'].includes(String(v.type)) || !isString(v.label) || !isString(v.url)) return false;
-  try { return ['http:', 'https:', 'mailto:'].includes(new URL(v.url).protocol); } catch { return false; }
-}
-function isPhotoDataUrl(v: unknown): v is string {
-  return isString(v) && v.length <= 4_000_000 && /^data:image\/(?:png|jpeg|pdf);base64,[A-Za-z0-9+/]+=*$/.test(v);
-}
-function isProfile(v: unknown): v is Profile {
-  return isObject(v) && ['name', 'title', 'email', 'phone', 'location'].every(k => isString(v[k])) &&
-    Array.isArray(v.links) && v.links.every(isLink) &&
-    (v.photoDataUrl === undefined || isPhotoDataUrl(v.photoDataUrl));
-}
-function isEntry(v: unknown): v is ContentEntry {
-  return isObject(v) && ['id', 'sectionId', 'title', 'subtitle', 'date', 'location', 'description'].every(k => isString(v[k])) &&
-    Array.isArray(v.bullets) && v.bullets.every(isString) && Array.isArray(v.technologies) && v.technologies.every(isString) &&
-    Array.isArray(v.links) && v.links.every(isLink);
-}
-const templateIds: TemplateId[] = ['t01-simple-ats', 't02-clean-compact', 't03-modern-developer', 't04-academic-cv', 't05-profile-cv'];
-function isDesign(v: unknown): v is DesignSettings {
-  return isObject(v) && (v.paper === 'a4' || v.paper === 'letter') && ['serif', 'sans', 'latin-modern-serif', 'latin-modern-sans', 'tex-gyre-termes', 'tex-gyre-heros', 'tex-gyre-pagella', 'tex-gyre-schola', 'tex-gyre-cursor'].includes(String(v.fontFamily)) &&
-    typeof v.fontSize === 'number' && Number.isFinite(v.fontSize) && v.fontSize >= 8 && v.fontSize <= 14 &&
-    ['marginTopMm', 'marginRightMm', 'marginBottomMm', 'marginLeftMm'].every(k => typeof v[k] === 'number' && Number.isFinite(v[k]) && (v[k] as number) >= 8 && (v[k] as number) <= 40) &&
-    typeof v.lineSpacing === 'number' && Number.isFinite(v.lineSpacing) && v.lineSpacing >= 0.9 && v.lineSpacing <= 1.5 &&
-    typeof v.bulletSpacing === 'number' && Number.isFinite(v.bulletSpacing) && v.bulletSpacing >= 0 && v.bulletSpacing <= 8 &&
-    (v.dateAlignment === 'right' || v.dateAlignment === 'below') && ['showEmail', 'showPhone', 'showLocation', 'showLinks', 'pageNumbers'].every(k => typeof v[k] === 'boolean') &&
-    isString(v.accentColor) && /^#[\da-fA-F]{6}$/.test(v.accentColor) && isString(v.textColor) && /^#[\da-fA-F]{6}$/.test(v.textColor) &&
-    typeof v.sectionGapPt === 'number' && Number.isFinite(v.sectionGapPt) && v.sectionGapPt >= 0 && v.sectionGapPt <= 24 &&
-    typeof v.entryGapPt === 'number' && Number.isFinite(v.entryGapPt) && v.entryGapPt >= 0 && v.entryGapPt <= 24 &&
-    typeof v.bulletIndentMm === 'number' && Number.isFinite(v.bulletIndentMm) && v.bulletIndentMm >= 2 && v.bulletIndentMm <= 16 &&
-    typeof v.dividerWeightPt === 'number' && Number.isFinite(v.dividerWeightPt) && v.dividerWeightPt >= 0.1 && v.dividerWeightPt <= 3 &&
-    typeof v.showDividers === 'boolean' && typeof v.showContactIcons === 'boolean' &&
-    (v.headerLayout === undefined || ['centered', 'left', 'split'].includes(String(v.headerLayout))) &&
-    (v.dividerStyle === undefined || ['solid', 'accent', 'dotted', 'none'].includes(String(v.dividerStyle))) &&
-    (v.pdfaCompliant === undefined || typeof v.pdfaCompliant === 'boolean');
-}
-function isVariant(v: unknown): v is ResumeVariant {
-  return isObject(v) && isString(v.id) && isString(v.name) && (v.mode === 'resume' || v.mode === 'cv') &&
-    templateIds.includes(v.templateId as TemplateId) && Array.isArray(v.selectedEntryIds) && v.selectedEntryIds.every(isString) &&
-    Array.isArray(v.sections) && v.sections.every(s => isObject(s) && isString(s.id) && isString(s.label) && Array.isArray(s.entryIds) && s.entryIds.every(isString) && typeof s.visible === 'boolean' && (s.design === undefined || isSectionDesign(s.design))) &&
-    isObject(v.profileOverrides) && Object.entries(v.profileOverrides).every(([key, value]) =>
-      (['name', 'title', 'email', 'phone', 'location'].includes(key) && isString(value)) ||
-      (key === 'links' && Array.isArray(value) && value.every(isLink)) ||
-      (key === 'photoDataUrl' && isPhotoDataUrl(value))) &&
-    isObject(v.entryOverrides) && Object.entries(v.entryOverrides).every(([id, override]) => isString(id) && isObject(override) && Object.keys(override).every(key => ['title', 'subtitle', 'date', 'location', 'description', 'bullets', 'technologies', 'links'].includes(key)) && ['title', 'subtitle', 'date', 'location', 'description'].every(key => override[key] === undefined || isString(override[key])) && ['bullets', 'technologies'].every(key => override[key] === undefined || (Array.isArray(override[key]) && override[key].every(isString))) && (override.links === undefined || (Array.isArray(override.links) && override.links.every(isLink)))) && isDesign(v.design) &&
-    typeof v.targetPages === 'number' && Number.isInteger(v.targetPages) && v.targetPages >= 1 && v.targetPages <= 10 && typeof v.maxPages === 'number' && Number.isInteger(v.maxPages) && v.maxPages >= v.targetPages && v.maxPages <= 10;
-}
-
-function isSectionDesign(value: unknown): value is SectionDesignSettings {
-  if (!isObject(value)) return false;
-  const ranges: Record<string, [number, number]> = {
-    fontSizePt: [8, 24], marginLeftMm: [0, 25], marginRightMm: [0, 25],
-    marginTopPt: [0, 36], marginBottomPt: [0, 36], paddingTopPt: [0, 24], paddingBottomPt: [0, 24], dividerWeightPt: [0.1, 3],
-  };
-  return Object.entries(value).every(([key, item]) => (key === 'showDivider' || key === 'pageBreakBefore') ? typeof item === 'boolean' :
-    key in ranges && typeof item === 'number' && Number.isFinite(item) && item >= ranges[key][0] && item <= ranges[key][1]);
-}
+function isProfile(v: unknown): v is Profile { return profileSchema.safeParse(v).success; }
+function isEntry(v: unknown): v is ContentEntry { return entrySchema.safeParse(v).success; }
+function isVariant(v: unknown): v is ResumeVariant { return variantSchema.safeParse(v).success; }

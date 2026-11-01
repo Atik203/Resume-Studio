@@ -137,7 +137,9 @@ def generate_rule_based_fallback(
 ) -> Dict[str, str]:
     """
     Deterministic rule-based transformer when Ollama is offline or uninstalled.
-    Guarantees the user always receives 3 strong actionable suggestions.
+    Returns three rewrites derived only from the user's text; it never invents
+    metrics or activities. The quantified variant includes an explicit
+    placeholder asking the user to add a verified result.
     """
     cleaned = bullet.strip().rstrip(".")
     # Replace weak verbs with power verbs
@@ -162,12 +164,15 @@ def generate_rule_based_fallback(
             action_text = strong + action_text[len(weak):]
             break
 
-    # Quantified template
-    quantified = f"{action_text}, improving system performance by 35% and reducing processing overhead."
-    # Action template
-    action = f"Spearheaded {cleaned.lower() if not cleaned[0].isupper() else cleaned}, establishing automated test suites and architectural reliability standards."
-    # Compact template
-    compact = f"{action_text}, boosting operational throughput and maintainability."
+    # Quantified template: ask for a real metric instead of inventing one.
+    quantified = f"{action_text} [add a verified metric: %, time saved, or scale]."
+    # Action template: verb-first rewrite of the user's own words.
+    action = f"{action_text}."
+    # Compact template: remove filler only; never add claims.
+    compact_text = action_text
+    for filler in ("in order to ", "various ", "successfully ", "a lot of "):
+        compact_text = compact_text.replace(filler, "")
+    compact = f"{compact_text}."
 
     return {
         "quantified": quantified,

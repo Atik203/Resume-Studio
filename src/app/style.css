@@ -125,12 +125,10 @@
 
 html, body {
   margin: 0;
-  height: 100%;
-  min-height: 100vh;
+  min-height: 100%;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--studio-text);
   background: var(--studio-bg);
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -895,6 +893,14 @@ select option {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Scroll container for the Design and AI Tools panes, which own their padding. */
+.editor-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Form Cards */
@@ -2859,6 +2865,49 @@ select option {
 }
 
 /* Page-Fit Modal Styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--card-foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.35);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 10px;
+  border-bottom: 1px solid var(--studio-line);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 18px;
+  border-top: 1px solid var(--studio-line);
+}
+
 .page-fit-modal-box {
   max-width: 620px;
   width: 90vw;
@@ -3257,3 +3306,12 @@ select option {
 
 
 
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease-out both;
+}

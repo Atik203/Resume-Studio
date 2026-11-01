@@ -5,6 +5,7 @@ node_modules/
 .tmp/
 out/
 build/
+/reference/
 *.log
 *.tsbuildinfo
 !.env.example
