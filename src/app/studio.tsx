@@ -17,46 +17,16 @@ import { useCompilePreview } from '@/hooks/use-compile-preview';
 import { useEntryDrag, useSectionDrag } from '@/hooks/use-drag-reorder';
 import { Button } from '@/components/ui/button';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
-import Link from 'next/link';
 import { getDesignPreset, type DesignPresetId } from '@/lib/design-presets';
 import {
-  Download,
   Eye,
   FileEdit,
   Plus,
-  RefreshCw,
-  Sliders,
-  Sparkles,
-  Code2,
-  History,
-  FileArchive,
-  ChevronDown,
-  MoreVertical,
-  FileText,
-  Check,
-  Sun,
-  Moon,
-  Home,
-  PanelLeft,
-  User,
-  Zap,
-  Briefcase,
-  FolderGit2,
-  GraduationCap,
-  Layers,
 } from 'lucide-react';
 
-function getSectionChipIcon(id: string) {
-  const lower = id.toLowerCase();
-  if (lower.includes('skill')) return <Zap size={12} className="text-amber-500 shrink-0" />;
-  if (lower.includes('exp') || lower.includes('work')) return <Briefcase size={12} className="text-emerald-500 shrink-0" />;
-  if (lower.includes('proj')) return <FolderGit2 size={12} className="text-purple-500 shrink-0" />;
-  if (lower.includes('edu')) return <GraduationCap size={12} className="text-sky-500 shrink-0" />;
-  return <Layers size={12} className="text-neutral-400 shrink-0" />;
-}
-
 import { Sidebar } from '@/components/studio/sidebar';
-import { ProfileCard } from '@/components/studio/profile-card';import { SectionCard } from '@/components/studio/section-card';
+import { ProfileCard } from '@/components/studio/profile-card';
+import { SectionCard } from '@/components/studio/section-card';
 import { EntryCard } from '@/components/studio/entry-card';
 import { DesignTab } from '@/components/studio/design-tab';
 import { AtsPanel } from '@/components/studio/ats-panel';
@@ -66,16 +36,10 @@ import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
 import { SnapshotModal } from '@/components/studio/snapshot-modal';
 import { PreviewPane } from '@/components/studio/preview-pane';
+import { Topbar } from '@/components/studio/topbar';
+import { EditorHeader } from '@/components/studio/editor-header';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { resolveVariant, type ResumeSnapshot } from '@/lib/data';
 
 const PREMADE_SECTIONS = [
@@ -110,7 +74,6 @@ export default function Studio() {
   const [exportingZip, setExportingZip] = useState(false);
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
   const dragX = useRef<number | null>(null);
-  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
@@ -865,197 +828,31 @@ export default function Studio() {
     <main
       className={`app-shell ${preferences.theme === 'dark' ? 'dark' : ''}`}
     >
-      {/* 0. FLOWCV-GRADE FLOATING TOPBAR */}
-      <header className="studio-topbar">
-        <div className="studio-topbar-left">
-          <Link href="/" className="studio-brand" title="Return to Landing Page">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-xs">
-              <FileText size={17} />
-            </div>
-            <span className="font-extrabold text-sm text-neutral-900 dark:text-neutral-100 tracking-tight hidden sm:inline">
-              Resume Studio
-            </span>
-          </Link>
-
-          {/* Dedicated Sidebar Toggle Button */}
-          <button
-            type="button"
-            className="studio-icon-btn hidden md:inline-flex"
-            onClick={() =>
-              setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))
-            }
-            title={preferences.sidebarCollapsed ? 'Expand library sidebar' : 'Collapse library sidebar'}
-            aria-label="Toggle library sidebar"
-          >
-            <PanelLeft size={16} />
-          </button>
-
-          {/* Floating Pill Navigation Tabs */}
-          <div className="studio-nav-pills" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activePane === 'editor'}
-              className={`studio-pill-btn ${activePane === 'editor' ? 'active' : ''}`}
-              onClick={() => setActivePane('editor')}
-            >
-              <FileEdit size={13} />
-              <span>Content</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activePane === 'design'}
-              className={`studio-pill-btn ${activePane === 'design' ? 'active' : ''}`}
-              onClick={() => setActivePane('design')}
-            >
-              <Sliders size={13} />
-              <span>Customize</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activePane === 'ats'}
-              className={`studio-pill-btn ${activePane === 'ats' ? 'active' : ''}`}
-              onClick={() => setActivePane('ats')}
-            >
-              <Sparkles size={13} />
-              <span>AI Tools</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Draft Switcher + Primary Download + More Menu */}
-        <div className="studio-topbar-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="draft-selector-btn" title="Switch or manage drafts">
-                <span className="truncate max-w-[130px] sm:max-w-[180px]">{active.name}</span>
-                <ChevronDown size={13} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuLabel>Resume & CV Drafts</DropdownMenuLabel>
-              {project.variants.map(v => (
-                <DropdownMenuItem
-                  key={v.id}
-                  onSelect={() => updateProject(p => ({ ...p, activeVariantId: v.id }))}
-                  className={v.id === active.id ? 'font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30' : ''}
-                >
-                  <span className="truncate flex-1">{v.name}</span>
-                  {v.id === active.id && <Check size={14} className="text-emerald-600 dark:text-emerald-400" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => setShowNewDraftModal(true)}
-                className="text-emerald-700 dark:text-emerald-400 font-semibold"
-              >
-                <Plus size={13} />
-                <span>Create New Draft…</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => duplicateDraft(active.id)}>
-                <span>Duplicate Current Draft</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Primary Download Split Button */}
-          <div className="relative inline-flex items-center">
-            <Button
-              className="download-primary-btn"
-              disabled={busy}
-              onClick={pdfFile ? exportPdf : compile}
-              title="Download Verified PDF (Ctrl+S)"
-            >
-              {busy ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-              <span>{busy ? 'Compiling…' : 'Download'}</span>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="download-split-arrow" title="Export options">
-                  <ChevronDown size={13} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem disabled={!pdfFile} onSelect={exportPdf} className="font-semibold">
-                  <Download size={13} className="text-emerald-600" />
-                  <span>Download Verified PDF</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled={exportingZip} onSelect={exportLatexZip}>
-                  <FileArchive size={13} className="text-amber-500" />
-                  <span>Export Standalone LaTeX (.zip)</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled={busy} onSelect={compile}>
-                  <RefreshCw size={13} className="text-sky-500" />
-                  <span>Force Recompile (Ctrl+B)</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* More Menu (⋮) */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="studio-icon-btn" title="Developer tools & backups">
-                <MoreVertical size={16} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Developer & History</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => setShowLatexInspectorModal(true)}>
-                <Code2 size={13} className="text-emerald-500" />
-                <span>Inspect LaTeX Source</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setShowSnapshotModal(true)}>
-                <History size={13} className="text-sky-500" />
-                <span>Snapshot Time Machine</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setShowPageFitModal(true)}>
-                <Sparkles size={13} className="text-purple-500" />
-                <span>Page-Fit Assistant</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Project Backup</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={exportBackup}>
-                <span>Export JSON Backup</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => importInputRef.current?.click()}>
-                <span>Import JSON Backup</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() =>
-                  setPreferences(p => ({
-                    ...p,
-                    theme: p.theme === 'dark' ? 'light' : 'dark',
-                  }))
-                }
-              >
-                <span className="flex-1">Toggle Dark Theme</span>
-                {preferences.theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/" className="flex w-full items-center gap-2 text-muted-foreground">
-                  <Home size={13} />
-                  <span>Public Landing Page</span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json"
-            onChange={importBackup}
-            className="hidden"
-          />
-        </div>
-      </header>
+      <Topbar
+        activePane={activePane}
+        onPaneChange={setActivePane}
+        libraryCollapsed={preferences.sidebarCollapsed}
+        onToggleLibrary={() => setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))}
+        drafts={project.variants}
+        activeDraftId={active.id}
+        activeDraftName={active.name}
+        onSelectDraft={(id: string) => updateProject(p => ({ ...p, activeVariantId: id }))}
+        onNewDraft={() => setShowNewDraftModal(true)}
+        onDuplicateDraft={duplicateDraft}
+        hasPdf={Boolean(pdfFile)}
+        busy={busy}
+        exportingZip={exportingZip}
+        onDownloadPdf={exportPdf}
+        onCompile={compile}
+        onExportLatex={exportLatexZip}
+        onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
+        onOpenSnapshots={() => setShowSnapshotModal(true)}
+        onOpenPageFit={() => setShowPageFitModal(true)}
+        onExportBackup={exportBackup}
+        onImportBackup={importBackup}
+        onToggleTheme={() => setPreferences(p => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
+        theme={preferences.theme}
+      />
 
       {/* Mobile Workspace Tabs */}
       <div className="mobile-workspace-tabs" role="tablist" aria-label="Mobile workspace view">
@@ -1116,75 +913,16 @@ export default function Studio() {
 
         {/* 2. CENTER FLUID EDITOR COLUMN */}
         <section className="editor-column" aria-label="Document editor">
-          {/* Context-Aware Editor Header */}
-          {activePane === 'editor' ? (
-            <div className="editor-header">
-              <div className="editor-header-main">
-                <div className="editor-breadcrumb">
-                  <span>{active.mode === 'cv' ? 'Curriculum Vitae' : 'Resume'}</span>
-                  <span>·</span>
-                  <span>
-                    {active.targetPages} {active.targetPages === 1 ? 'Page Target' : 'Pages Target'}
-                  </span>
-                </div>
-                <input
-                  className="editor-title-input"
-                  value={active.name}
-                  aria-label="Draft name"
-                  placeholder="Name your resume draft"
-                  onChange={e => updateVariant(v => ({ ...v, name: e.target.value }))}
-                />
-                {/* Section Quick Nav Chips */}
-                <div className="section-quick-nav" aria-label="Jump to section">
-                  <button
-                    type="button"
-                    className="section-chip"
-                    onClick={() => scrollToSection('profile')}
-                  >
-                    <User size={12} className="text-emerald-500 shrink-0" />
-                    <span>Profile</span>
-                  </button>
-                  {active.sections.map(section => (
-                    <button
-                      key={section.id}
-                      type="button"
-                      className="section-chip"
-                      onClick={() => scrollToSection(section.id)}
-                    >
-                      {getSectionChipIcon(section.id)}
-                      <span>{section.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : activePane === 'design' ? (
-            <div className="editor-header design-header">
-              <div className="editor-header-main">
-                <div className="editor-breadcrumb">
-                  <span>Document Styling</span>
-                  <span>·</span>
-                  <span>Template: {active.templateId}</span>
-                </div>
-                <h2 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
-                  Design, Typography & Spacing
-                </h2>
-              </div>
-            </div>
-          ) : (
-            <div className="editor-header ats-header">
-              <div className="editor-header-main">
-                <div className="editor-breadcrumb">
-                  <span>Intelligence & Matcher</span>
-                  <span>·</span>
-                  <span>Local GPU Inference</span>
-                </div>
-                <h2 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
-                  ATS Matcher & Keyword Optimizer
-                </h2>
-              </div>
-            </div>
-          )}
+          <EditorHeader
+            activePane={activePane}
+            mode={active.mode}
+            targetPages={active.targetPages}
+            templateId={active.templateId}
+            name={active.name}
+            sections={active.sections}
+            onRename={(name: string) => updateVariant(v => ({ ...v, name }))}
+            onSectionClick={scrollToSection}
+          />
 
           {/* Editor Content Area */}
           {activePane === 'editor' ? (
