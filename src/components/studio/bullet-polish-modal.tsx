@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
   Check,
@@ -15,6 +15,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import type { PolishBulletResponse, PolishVariation } from '@/lib/ml-types';
+import { useModalBehavior } from '@/hooks/use-modal-behavior';
 
 interface BulletPolishModalProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ export function BulletPolishModal({
   const [data, setData] = useState<PolishBulletResponse | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [appliedKey, setAppliedKey] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(modalRef, onClose, isOpen);
 
   // Fetch polish variations on open or when bulletText changes
   useEffect(() => {
@@ -145,7 +148,7 @@ export function BulletPolishModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl text-foreground overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/80">

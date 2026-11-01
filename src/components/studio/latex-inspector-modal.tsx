@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Code2,
   Copy,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ResolvedVariant, TemplateId } from '@/lib/data';
 import { renderLatex } from '@/lib/latex';
+import { useModalBehavior } from '@/hooks/use-modal-behavior';
 
 interface LatexInspectorModalProps {
   isOpen: boolean;
@@ -149,6 +150,9 @@ export function LatexInspectorModal({
     return currentLatex.split('\n');
   }, [currentLatex]);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(modalRef, onClose, isOpen);
+
   if (!isOpen) return null;
 
   const handleCopy = () => {
@@ -171,7 +175,7 @@ export function LatexInspectorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-5xl h-[88vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl text-foreground overflow-hidden">
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/90">

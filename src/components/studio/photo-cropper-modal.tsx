@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useModalBehavior } from '@/hooks/use-modal-behavior';
 import { Upload } from 'lucide-react';
 
 export interface PhotoCropperModalProps {
@@ -28,6 +29,8 @@ function PhotoCropperContent({
   const panStartRef = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(modalRef, onClose, true);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -146,6 +149,7 @@ function PhotoCropperContent({
 
   return (
     <div
+      ref={modalRef}
       className="photo-cropper-overlay"
       onClick={onClose}
       role="dialog"
