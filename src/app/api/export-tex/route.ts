@@ -24,21 +24,24 @@ export async function POST(req: Request) {
     // Check if profile photo exists
     let hasPhoto = false;
     if (resolved.templateId === 't05-profile-cv' && resolved.profile.photoDataUrl) {
-      const match = resolved.profile.photoDataUrl.match(/^data:image\/(png|jpeg);base64,(.+)$/);
-      if (match) {
-        hasPhoto = true;
-        const ext = match[1] === 'jpeg' ? 'jpg' : 'png';
-        const photoBuffer = Buffer.from(match[2], 'base64');
-        zip.file(`assets/profile.${ext}`, photoBuffer);
-
-        // Adjust main.tex to reference local assets/profile.ext if needed
-        latexSource = latexSource.replace(/\\includegraphics\[.*?\]\{.*?\}/g, (orig) => {
-          if (orig.includes('photo') || orig.includes('profile')) {
-            return `\\includegraphics[width=26mm,height=26mm,keepaspectratio]{assets/profile.${ext}}`;
-          }
-          return orig;
-        });
+      const match = resolved.profile.photoDataUrl.match(/^data:image\/(png|jpeg|pdf);base64,(.+)$/);
+      if (!match) {
+        return NextResponse.json({ error: 'Profile photo must be a PNG, JPEG, or PDF data URL.' }, { status: 422 });
       }
+
+      const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+      const photoBuffer = Buffer.from(match[2], 'base64');
+      zip.file(`assets/profile.${ext}`, photoBuffer);
+      hasPhoto = true;
+
+      const replaced = latexSource.replace(
+        /\\includegraphics\[width=22mm,height=26mm,keepaspectratio\]\{profile-photo\}/,
+        `\\includegraphics[width=22mm,height=26mm,keepaspectratio]{assets/profile.${ext}}`
+      );
+      if (replaced === latexSource) {
+        return NextResponse.json({ error: 'The profile photo could not be referenced in the exported LaTeX source.' }, { status: 422 });
+      }
+      latexSource = replaced;
     }
 
     // Add main.tex
