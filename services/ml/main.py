@@ -3,16 +3,22 @@ Resume Studio — Local Python ML Service
 Bound strictly to loopback (127.0.0.1:8000) for 100% offline, private AI assistance.
 """
 
-from typing import List, Optional, Dict, Any
+import json
+import logging
+from typing import Annotated, List, Optional, Dict, Any
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 
 from taxonomy import extract_skills, SKILL_TAXONOMY
 from matcher import match_resume_to_job
 from xyz_scorer import score_bullets_batch, analyze_bullet
 from ats_simulator import simulate_ats_parse
 from ollama_client import check_ollama_status, polish_bullet_with_qwen, DEFAULT_MODEL
+
+logger = logging.getLogger("resume_studio_ml")
+BulletText = Annotated[str, StringConstraints(min_length=1, max_length=5_000)]
 
 app = FastAPI(
     title="Resume Studio ML Engine",
@@ -36,12 +42,12 @@ app.add_middleware(
 
 
 class MatchRequest(BaseModel):
-    resume_text: str
-    job_description: str
+    resume_text: str = Field(min_length=1, max_length=100_000)
+    job_description: str = Field(min_length=1, max_length=100_000)
 
 
 class ScoreBulletsRequest(BaseModel):
-    bullets: List[str]
+    bullets: List[BulletText] = Field(min_length=1, max_length=200)
 
 
 class SimulateAtsRequest(BaseModel):
@@ -50,13 +56,13 @@ class SimulateAtsRequest(BaseModel):
 
 
 class PolishBulletRequest(BaseModel):
-    bullet: str
+    bullet: BulletText
     context: Optional[Dict[str, str]] = None
     model: Optional[str] = DEFAULT_MODEL
 
 
 class ExtractEntitiesRequest(BaseModel):
-    text: str
+    text: str = Field(min_length=1, max_length=100_000)
 
 
 @app.get("/health")
@@ -97,8 +103,9 @@ def match_job(req: MatchRequest):
     """Calculate semantic relevance, skill overlap, and missing keywords."""
     try:
         return match_resume_to_job(req.resume_text, req.job_description)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Job matching failed")
+        raise HTTPException(status_code=500, detail="Internal ML service error. Check the service log.")
 
 
 @app.post("/api/score-bullets")
@@ -106,8 +113,9 @@ def score_bullets(req: ScoreBulletsRequest):
     """Analyze bullet points against Google XYZ impact criteria."""
     try:
         return score_bullets_batch(req.bullets)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Bullet scoring failed")
+        raise HTTPException(status_code=500, detail="Internal ML service error. Check the service log.")
 
 
 @app.post("/api/polish-bullet")
@@ -199,17 +207,23 @@ def extract_entities(req: ExtractEntitiesRequest):
             "categorized": categorized,
             "total_count": len(skills),
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Entity extraction failed")
+        raise HTTPException(status_code=500, detail="Internal ML service error. Check the service log.")
 
 
 @app.post("/api/simulate-ats")
 def run_ats_simulation(req: SimulateAtsRequest):
     """Simulate ATS extraction and flag potential formatting/chronology traps."""
     try:
+        if len(json.dumps(req.project)) > 5_000_000:
+            raise HTTPException(status_code=413, detail="Project payload is too large.")
         return simulate_ats_parse(req.project, req.variantId)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("ATS simulation failed")
+        raise HTTPException(status_code=500, detail="Internal ML service error. Check the service log.")
 
 
 
