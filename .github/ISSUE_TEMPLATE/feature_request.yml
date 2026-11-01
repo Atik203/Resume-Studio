@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a focused improvement for the local-first editor.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep proposals compatible with the project principles: local-first, no cloud dependency,
+        no login, no telemetry, and no silent content loss.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is difficult or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the smallest useful version.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Compatibility
+      options:
+        - label: This can work fully offline.
+          required: true
+        - label: This does not require a cloud account or telemetry.
+          required: true
+        - label: This does not silently remove or rewrite resume content.
+          required: true

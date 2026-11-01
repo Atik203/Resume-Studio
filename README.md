@@ -1,5 +1,7 @@
 # Resume Studio
 
+[![CI](https://github.com/Atik203/Resume-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Atik203/Resume-Studio/actions/workflows/ci.yml)
+
 Resume Studio is a local-first resume/CV editor for Windows. It edits structured content, stores it in this browser, and compiles real PDFs with the local TeX Live `pdflatex` executable.
 
 ## Run locally
@@ -92,3 +94,13 @@ The JS suite is self-contained: it compiles synthetic fixture content through al
 ## Add a template
 
 Add the template ID and UI label in `src/app/studio.tsx`, then implement its layout variation in `src/lib/latex.ts`. Keep all wording in structured fields; never put personal resume text in the template source. Extend the renderer tests and render a fixture PDF with local TeX Live before considering the template complete.
+
+## Project
+
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Support](SUPPORT.md)
+- [Changelog](CHANGELOG.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Known limitations](docs/known-limitations.md)
+- [License](LICENSE) — MIT

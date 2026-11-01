@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const channel = process.env.CI ? undefined : 'chrome';
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
@@ -7,14 +9,14 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: 'http://127.0.0.1:3000',
-    channel: 'chrome',
+    ...(channel ? { channel } : {}),
     viewport: { width: 1280, height: 800 },
     trace: 'retain-on-failure',
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+      use: { ...devices['Desktop Chrome'], ...(channel ? { channel } : {}) },
     },
   ],
   webServer: {
