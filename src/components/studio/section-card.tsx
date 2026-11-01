@@ -5,6 +5,7 @@ import { Section, SectionDesignSettings } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import {
   Briefcase,
@@ -45,6 +46,7 @@ export interface SectionCardProps {
   onEditDesign: (patch: Partial<SectionDesignSettings>) => void;
   defaultFontSize: number;
   defaultDividerWeight: number;
+  defaultDividerWidth: 'full' | 'half' | 'label';
   defaultShowDividers: boolean;
   children: React.ReactNode;
 }
@@ -77,6 +79,7 @@ export function SectionCard({
   onEditDesign,
   defaultFontSize,
   defaultDividerWeight,
+  defaultDividerWidth,
   defaultShowDividers,
   children,
 }: SectionCardProps) {
@@ -279,6 +282,23 @@ export function SectionCard({
                 }
                 className="h-8 text-xs rounded-lg dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
               />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="font-semibold text-neutral-600 dark:text-neutral-400">Divider Width</span>
+              <NativeSelect
+                value={section.design?.dividerWidth ?? defaultDividerWidth}
+                onChange={e =>
+                  onEditDesign({
+                    dividerWidth: e.target.value as 'full' | 'half' | 'label',
+                  })
+                }
+                className="h-8 text-xs rounded-lg dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
+              >
+                <NativeSelectOption value="full">Full width</NativeSelectOption>
+                <NativeSelectOption value="half">Half width</NativeSelectOption>
+                <NativeSelectOption value="label">Heading width</NativeSelectOption>
+              </NativeSelect>
             </label>
 
             <label className="flex flex-col gap-1">

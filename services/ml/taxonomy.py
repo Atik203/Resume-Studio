@@ -3,11 +3,11 @@ Resume Studio — Tech & Professional Skill Taxonomy
 Curated open-source taxonomy covering software engineering, data science, DevOps, and systems.
 """
 
-from typing import Dict, List, Set, Tuple
+from typing import Any, Dict, List, Tuple
 import re
 
 # Canonical skill -> list of aliases / variants
-SKILL_TAXONOMY: Dict[str, Dict[str, any]] = {
+SKILL_TAXONOMY: Dict[str, Dict[str, Any]] = {
     # Programming Languages
     "Python": {"category": "Languages", "aliases": ["python", "py", "python3"]},
     "TypeScript": {"category": "Languages", "aliases": ["typescript", "ts"]},
@@ -109,14 +109,14 @@ for canonical_name, info in SKILL_TAXONOMY.items():
     SKILL_REGEX_MAP.append((canonical_name, category, combined_pattern))
 
 
-def extract_skills(text: str) -> Dict[str, Dict[str, any]]:
+def extract_skills(text: str) -> Dict[str, Dict[str, Any]]:
     """
     Extract canonical skills found within text, returning skill name, category, and match count.
     """
     if not text:
         return {}
 
-    found: Dict[str, Dict[str, any]] = {}
+    found: Dict[str, Dict[str, Any]] = {}
     for canonical_name, category, pattern in SKILL_REGEX_MAP:
         matches = pattern.findall(text)
         if matches:

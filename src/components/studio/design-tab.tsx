@@ -595,21 +595,75 @@ export function DesignTab({
               </NativeSelect>
             </label>
 
+            <label>
+              <span>Divider Width</span>
+              <NativeSelect
+                value={active.design.dividerWidth ?? 'full'}
+                onChange={e =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: {
+                      ...v.design,
+                      dividerWidth: e.target.value as 'full' | 'half' | 'label',
+                    },
+                  }))
+                }
+              >
+                <NativeSelectOption value="full">Full content width</NativeSelectOption>
+                <NativeSelectOption value="half">Half width</NativeSelectOption>
+                <NativeSelectOption value="label">Heading width only</NativeSelectOption>
+              </NativeSelect>
+            </label>
+
+            <label>
+              <span>Contact Link Text</span>
+              <NativeSelect
+                value={active.design.linkDisplay ?? 'label'}
+                onChange={e =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: {
+                      ...v.design,
+                      linkDisplay: e.target.value as 'label' | 'url' | 'both',
+                    },
+                  }))
+                }
+              >
+                <NativeSelectOption value="label">Label only</NativeSelectOption>
+                <NativeSelectOption value="url">Full URL</NativeSelectOption>
+                <NativeSelectOption value="both">Label + URL</NativeSelectOption>
+              </NativeSelect>
+            </label>
+
+            <label className="setting-toggle">
+              <span>Underline Links</span>
+              <Switch
+                checked={active.design.linkUnderline ?? true}
+                onCheckedChange={checked =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: { ...v.design, linkUnderline: checked },
+                  }))
+                }
+              />
+            </label>
+
             {(
               [
                 ['showEmail', 'Show Email'],
                 ['showPhone', 'Show Phone'],
-                ['showLocation', 'Show Location'],
+                ['showLocation', 'Show Header Location'],
+                ['showEntryLocations', 'Show Entry Locations'],
                 ['showLinks', 'Show Links'],
                 ['pageNumbers', 'Page Numbers'],
                 ['showDividers', 'Section Divider Lines'],
-                ['showContactIcons', 'Contact Icons'],
+                ['showContactIcons', 'Link Type Icons'],
               ] as const
             ).map(([field, label]) => (
               <label className="setting-toggle" key={field}>
                 <span>{label}</span>
                 <Switch
-                  checked={active.design[field]}
+                  checked={active.design[field] ?? true}
                   onCheckedChange={checked =>
                     onUpdateVariant(v => ({
                       ...v,
@@ -620,15 +674,15 @@ export function DesignTab({
               </label>
             ))}
 
-            {/* PDF/A Archival Toggle */}
+            {/* PDF metadata tags (not a PDF/A conformance flag) */}
             <label className="setting-toggle">
               <div className="flex flex-col">
-                <span className="font-semibold text-white flex items-center gap-1.5">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
                   <ShieldCheck size={13} className="text-emerald-400" />
-                  <span>PDF/A Archival Metadata</span>
+                  <span>PDF document metadata</span>
                 </span>
                 <span className="text-[10.5px] text-muted-foreground">
-                  Injects ISO 19005-1 preservation metadata into compiled PDF
+                  Adds title, author, and subject tags. This does not certify PDF/A compliance.
                 </span>
               </div>
               <Switch

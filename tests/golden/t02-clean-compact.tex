@@ -1,0 +1,59 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[top=18mm,right=18mm,bottom=18mm,left=18mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{fontawesome5}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\definecolor{accent}{HTML}{315B78}
+\definecolor{bodytext}{HTML}{171717}
+\hypersetup{colorlinks=true,urlcolor=accent,linkcolor=accent}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1pt}
+\renewcommand{\baselinestretch}{1}
+\newlength{\resumesectionwidth}
+\newcommand{\ResumeSection}[3]{\par\addvspace{7pt}\settowidth{\resumesectionwidth}{\large\bfseries #1}\noindent{\large\bfseries\color{bodytext} #1}\par\vspace{1pt}\noindent\color{bodytext}\rule{#3}{#2}\color{bodytext}\par\vspace{2pt}}
+\begin{document}
+
+\fontsize{10pt}{12.00pt}\selectfont
+\color{bodytext}
+\raggedright
+\noindent{\LARGE\bfseries Synthetic Developer}\par\vspace{2pt}{\large\color{bodytext} Software Engineer}\par\vspace{4pt}{\small \href{\detokenize{mailto:hello@example.test}}{\underline{hello@example.test}} \quad +1 555 0100 \quad \href{\detokenize{https://example.test/}}{\underline{Portfolio}} \quad Example City}\par
+\vspace{3pt}
+\par\vspace{0pt}\begingroup\setlength{\leftskip}{0mm}\setlength{\rightskip}{0mm}\vspace{0pt}\fontsize{10pt}{12.00pt}\selectfont\ResumeSection{Skills}{0.45pt}{\dimexpr\linewidth-0mm-0mm\relax}
+\par\noindent\textbf{Programming Languages:} TypeScript, JavaScript, Python, Go
+\vspace{0pt}
+\par\noindent\textbf{Frameworks \& Libraries:} React, Next.js, Node.js, Express
+\vspace{0pt}
+\par\noindent\textbf{Data:} PostgreSQL, SQLite, Redis
+\vspace{0pt}
+\par\noindent\textbf{Tools:} Git, Docker, Linux, Figma\par\vspace{0pt}\endgroup\par\vspace{0pt}
+\medskip
+\par\vspace{0pt}\begingroup\setlength{\leftskip}{0mm}\setlength{\rightskip}{0mm}\vspace{0pt}\fontsize{10pt}{12.00pt}\selectfont\ResumeSection{Experience}{0.45pt}{\dimexpr\linewidth-0mm-0mm\relax}
+\par\smallskip\noindent\textbf{Software Engineer | Example Labs}\hfill{\small 2023 -- Present}\par{\small Remote}\par Builds reliable local-first tools for small teams.\begin{itemize}[leftmargin=4.4mm,itemsep=2pt,topsep=2pt]
+\item Designed an accessible editor with clear keyboard flows.
+\item Improved release reliability through repeatable checks.
+\item Worked with users to turn feedback into clear product changes.\end{itemize}\par\textbf{Technologies:} TypeScript, React, Node.js\par\vspace{0pt}\endgroup\par\vspace{0pt}
+\medskip
+\par\vspace{0pt}\begingroup\setlength{\leftskip}{0mm}\setlength{\rightskip}{0mm}\vspace{0pt}\fontsize{10pt}{12.00pt}\selectfont\ResumeSection{Projects}{0.45pt}{\dimexpr\linewidth-0mm-0mm\relax}
+\par\smallskip\noindent\textbf{Field Notes | Personal knowledge app}\hfill{\small 2024}\par A lightweight app for collecting and finding research notes.\begin{itemize}[leftmargin=4.4mm,itemsep=2pt,topsep=2pt]
+\item Added fast search across structured records.
+\item Built local backup and restore for portable project data.\end{itemize}\par\textbf{Technologies:} TypeScript, SQLite\par\smallskip \href{\detokenize{https://example.test/source}}{\underline{Source}}
+\vspace{0pt}
+\par\smallskip\noindent\textbf{Civic Data Explorer | Open data dashboard}\hfill{\small 2023}\par An interactive dashboard that helps residents explore public datasets.\begin{itemize}[leftmargin=4.4mm,itemsep=2pt,topsep=2pt]
+\item Designed responsive data views with keyboard-accessible filters.
+\item Added import validation and safe export for user-created reports.\end{itemize}\par\textbf{Technologies:} React, Node.js, PostgreSQL\par\smallskip \href{\detokenize{https://example.test/demo}}{\underline{Demo}} \quad \href{\detokenize{https://example.test/civic-source}}{\underline{Source}}
+\vspace{0pt}
+\par\smallskip\noindent\textbf{Task Garden}\hfill{\small 2022}\par A small planning app for organizing work into focused sessions.\begin{itemize}[leftmargin=4.4mm,itemsep=2pt,topsep=2pt]
+\item Created reusable task lists and progress summaries.
+\item Implemented offline-first storage with simple recovery.\end{itemize}\par\textbf{Technologies:} TypeScript, IndexedDB\par\vspace{0pt}\endgroup\par\vspace{0pt}
+\medskip
+\par\vspace{0pt}\begingroup\setlength{\leftskip}{0mm}\setlength{\rightskip}{0mm}\vspace{0pt}\fontsize{10pt}{12.00pt}\selectfont\ResumeSection{Education}{0.45pt}{\dimexpr\linewidth-0mm-0mm\relax}
+\par\smallskip\noindent\textbf{BSc Computer Science | Example University}\hfill{\small 2020 -- 2024}\par{\small Example City}\par Graduated with honors. Selected coursework in software design and data systems.\begin{itemize}[leftmargin=4.4mm,itemsep=2pt,topsep=2pt]
+\item Dean's list for academic performance.\end{itemize}\par\vspace{0pt}\endgroup\par\vspace{0pt}
+\end{document}

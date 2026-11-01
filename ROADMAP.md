@@ -43,14 +43,14 @@
                  Optional Internal IPC / HTTP on 127.0.0.1:8000
                                            |
 +------------------------------------------v----------------------------------------+
-|               LOCAL PYTHON ML MICROSERVICE (FastAPI / PyTorch / spaCy)             |
+|               LOCAL PYTHON ML MICROSERVICE (FastAPI + Pydantic)                   |
 |                                                                                   |
-|  - 100% Offline, runs locally on user's machine (CPU or CUDA/DirectML)           |
-|  - Semantic Matcher: sentence-transformers (all-MiniLM-L6-v2 / bge-small-en)      |
-|  - Entity & Skill Extraction: spaCy NER pipeline (custom resume skill taxonomy)   |
-|  - ATS Parsing Simulator: Emulates enterprise ATS parsing graphs & date formats  |
-|  - Action-Verb & Impact Scorer: XYZ formula analysis & local bullet enhancement   |
-|  - Optional Local LLM/SLM: llama-cpp-python (quantized Qwen2.5/Llama-3.2 1B/3B)   |
+|  - 100% Offline, runs locally on the user's machine                               |
+|  - Lexical Matcher: token overlap + curated skill taxonomy                        |
+|  - Entity Extraction: regex taxonomy (no spaCy/NER model)                         |
+|  - ATS Parsing Simulator: regex contact/date/structure diagnostics                |
+|  - Action-Verb & Impact Scorer: hand-curated lexicon + metric regexes             |
+|  - Optional Local LLM: Ollama qwen3.5:4b, with a labeled rule-based fallback      |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -75,9 +75,9 @@
   - Markdown inline formatting in bullets (`**bold**`, `*italic*`, `[link](url)`) safely escaped into LaTeX macros.
   - Header layout architecture switcher (Centered Minimalist, Modern Left-Aligned, Split Two-Column Header).
   - Granular divider styles (Solid Hairline, Accent Tinted Bar, Dotted / Dashed, Clean Whitespace).
-- [x] **Phase 2: Local Python ML Service & Semantic ATS Matcher**:
+- [x] **Phase 2: Local Python ML Service & Lexical ATS Matcher**:
   - 100% offline companion microservice on loopback (`http://127.0.0.1:8000/health`) with automatic graceful fallback.
-  - Semantic JD matcher with cosine similarity and keyword gap categorization (matched, partial, missing skills).
+  - Lexical JD matcher with token-overlap scoring and keyword gap categorization (matched, partial, missing skills).
   - Google XYZ bullet scoring (action verb strength, metric detection, methodology).
   - Simulated ATS parsing diagnostic checking structured data extraction.
 - [x] **Phase 3: One-Click Page-Fit Assistant & Spacing Intelligence**:
@@ -86,11 +86,11 @@
   - Page-balancing expansion strategy for underfilled documents.
   - Orphan Hunter detecting runaway single-word wraps with 1-click wordy filler trimmer.
   - Multi-page CV section break controls (`\clearpage\noindent `) in section customization drawer.
-- [x] **Phase 4: Local Quantized Model / SLM Assist & Fine-Tuned Resume NER**:
+- [x] **Phase 4: Local Model Assist & Synthetic NER Benchmark**:
   - Integration with user's local `qwen3.5:4b` running on GPU via Ollama (`127.0.0.1:11434`) with zero cloud keys.
   - Interactive bullet polish modal generating 3 high-impact variations (Quantified Impact, Action-First Leadership, Compact ATS).
   - Before/after Google XYZ impact scores with delta badges and zero silent content loss.
-  - Custom NER fine-tuning and benchmark dataset generator (`train_ner.py`) with precision/recall evaluation.
+  - Synthetic NER-style dataset generator and regex benchmark (`train_ner.py`); no model is trained.
   - Categorized skill entity extraction API (`/api/extract-entities`).
   - Seamless offline fallback when Ollama or Python service is inactive.
 - [x] **Phase 5: Deep LaTeX Developer Tools & Local Ecosystem**:
@@ -98,8 +98,8 @@
   - Side-by-side LaTeX diff viewer highlighting dynamic line additions (`+`) and deletions (`-`) across templates and presets.
   - Standalone LaTeX ZIP package exporter (`/api/export-tex`) bundling `main.tex`, `resume-data.json`, `README.md`, and local portrait assets for instant compilation in TeX Live, MiKTeX, or Overleaf.
   - Local Snapshot Time Machine with IndexedDB v2 durable storage for creating named checkpoints, previewing, restoring, and forking variants.
-  - ISO 19005-1 / PDF/A archival metadata injection switch for enterprise compliance and long-term digital preservation.
-- [x] **Comprehensive Test Suite**: 45 automated Node/TypeScript test cases covering LaTeX generation, escaping, page-fit optimization, orphan detection, Phase 5 ZIP/diff/archival tools, and 6 Python ML tests (100% passing).
+  - PDF metadata tag switch (title/author/subject). This is not PDF/A certification.
+- [x] **Comprehensive Test Suite**: 53 automated Node/TypeScript tests plus 10 Python tests covering LaTeX generation, escaping, page-fit, orphan detection, ZIP export, schema validation, the compile guard, and ATS diagnostics. The 3 live-ML HTTP tests skip when the FastAPI service is offline.
 
 ---
 
@@ -109,7 +109,7 @@
 graph TD
     P1[Phase 1: FlowCV-Grade Interactive Editor & Formatting] --> P2[Phase 2: Local Python ML Service & Semantic ATS Matcher]
     P2 --> P3[Phase 3: One-Click Page-Fit Assistant & Spacing Intelligence]
-    P3 --> P4[Phase 4: Local Model Training, Fine-Tuning & Quantized LLM]
+    P3 --> P4[Phase 4: Local Model Assist & Synthetic NER Benchmark]
     P4 --> P5[Phase 5: Deep LaTeX Developer Tools & Ecosystem]
 ```
 
@@ -160,14 +160,14 @@ graph TD
 
 ---
 
-### Phase 2: Local Python ML Backend & Semantic ATS Matching
+### Phase 2: Local Python ML Backend & Lexical ATS Matching
 *Goal: Build a dedicated, 100% offline Python machine learning service that evaluates resume relevance against real job descriptions without sending any data to external servers.*
 
 #### 2.1 Python ML Microservice Architecture
 - **Technology Stack**:
   - **Framework**: FastAPI + Uvicorn bound strictly to `127.0.0.1:8000`.
-  - **Embeddings**: `sentence-transformers` running lightweight, high-performance models (`all-MiniLM-L6-v2` or `bge-small-en-v1.5`, ~80MB footprint, fast CPU inference).
-  - **Entity Extraction**: `spaCy` (`en_core_web_sm` / `en_core_web_md`) enhanced with a curated open-source tech-skills taxonomy.
+  - **Matching**: token-frequency cosine overlap plus taxonomy skill hits. No embeddings model is loaded.
+  - **Entity Extraction**: a curated skill taxonomy compiled to regular expressions. No spaCy pipeline is used.
   - **Execution**: Managed as a local background companion service or launched on-demand via a simple start script (`run-ml.bat` / `run-ml.sh`).
 - **Resilient Fallback**:
   - The Next.js web application pings `http://127.0.0.1:8000/health`. If offline, the UI displays a clean status indicator (*"ML Engine: Idle / Offline"*) and all core editing/LaTeX compilation works with zero degradation.
@@ -175,7 +175,7 @@ graph TD
 #### 2.2 Semantic Job Description Matcher
 - **UI/UX**:
   - **ATS Studio Drawer**: A slide-over panel where the user pastes the raw text of a target Job Description.
-  - **Semantic Match Gauge**: Visual match percentage (0–100%) calculated via cosine similarity between resume bullet vectors and JD requirement vectors.
+  - **Match Gauge**: Visual match percentage (0–100%) calculated from lexical token overlap and taxonomy hits between the resume and the job description.
   - **Keyword & Skill Categorization**:
     - *Matched Core Skills* (green tags): E.g., `TypeScript`, `Next.js`, `Docker`, `PostgreSQL`.
     - *Partially Related Competencies* (amber tags): E.g., JD asks for `Kubernetes`, resume mentions `Containerization/Docker`.
@@ -224,13 +224,13 @@ graph TD
 
 ---
 
-### Phase 4: Local Model Training, Fine-Tuning & Quantized LLM Assist
+### Phase 4: Local Model Assist & Synthetic NER Benchmark
 *Goal: Provide privacy-preserving, local AI assistance for bullet point refinement and custom skill entity recognition without relying on paid commercial APIs.*
 
-#### 4.1 Custom Resume Entity Recognition (NER) Fine-Tuning Pipeline
+#### 4.1 Synthetic NER-Style Benchmark
 - **Dataset & Pipeline**:
-  - Python training script using Hugging Face `transformers` or `spaCy` to fine-tune a small NER model on open-source resume corpus data (e.g., tech skills, certifications, job titles).
-  - Enables Resume Studio to identify domain-specific technologies and developer tools that generic language models miss.
+  - Python script that generates synthetic annotated sentences from the taxonomy and benchmarks the regex extractor against them. It does not train or ship a model.
+  - Provides a repeatable sanity check for taxonomy coverage; runtime extraction remains regex-based.
 
 #### 4.2 Local Quantized LLM Inference (Offline Bullet Polishing)
 - **Technology**:
@@ -310,7 +310,7 @@ Every feature must pass the following validation criteria prior to delivery:
 1. **Automated Unit & Integration Checks**:
    - `npm run typecheck`: Strict TypeScript, 0 errors.
    - `npm run lint`: ESLint with React 19 rules, 0 errors, 0 warnings.
-   - `npm test`: Automated Vitest test suite executing local `pdflatex` compilation across all templates.
+   - `npm test`: Self-contained Node test suite executing local `pdflatex` compilation across all templates, with live-ML tests skipped when the service is offline.
 2. **LaTeX Escaping & Injection Rigor**:
    - Automated tests verifying correct handling of special characters: `\`, `{`, `}`, `$`, `&`, `%`, `#`, `_`, `~`, `^`, angle brackets, and Unicode punctuation.
    - Hyperlink sanitization ensuring only valid `http://`, `https://`, and `mailto:` protocols are compiled.

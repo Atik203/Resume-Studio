@@ -5,14 +5,17 @@ Validates taxonomy skill extraction, Google XYZ bullet scoring, and semantic mat
 
 import sys
 import os
+import re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "ml"))
 
 from taxonomy import extract_skills
 from xyz_scorer import analyze_bullet, score_bullets_batch
 from matcher import match_resume_to_job
-from ats_simulator import simulate_ats_parse
+from ats_simulator import simulate_ats_parse, PHONE_REGEX
 from ollama_client import check_ollama_status, polish_bullet_with_qwen, generate_rule_based_fallback
 from train_ner import generate_synthetic_dataset, evaluate_ner_performance
+from pydantic import ValidationError
+from main import MatchRequest
 
 
 def test_taxonomy_extraction():
@@ -60,8 +63,8 @@ def test_job_matching():
     print("[OK] Job matching and keyword gap analysis passed.")
 
 
-def test_ats_simulator():
-    mock_project = {
+def _fixture_project():
+    return {
         "library": {
             "profile": {
                 "name": "Jane Developer",
@@ -91,11 +94,39 @@ def test_ats_simulator():
             }
         ],
     }
+
+
+def test_ats_simulator():
+    mock_project = _fixture_project()
     ats = simulate_ats_parse(mock_project, "v1")
     assert ats["ats_readability_score"] >= 80, f"Expected >= 80 ATS score, got {ats['ats_readability_score']}"
     assert ats["parsed_profile"]["name"] == "Jane Developer"
     assert ats["parsed_profile"]["email"] == "jane@example.com"
+    assert ats["contact_fields_found"]["name"] == "Jane Developer"
+    assert ats["contact_fields_found"]["links_count"] == 1
+    assert ats["chronological_order_valid"] is True
+    assert isinstance(ats["parsed_sections"], list)
+    assert "Jane Developer" in ats["extracted_clean_text"]
     print("[OK] ATS parser simulator passed.")
+
+
+def test_ats_accepts_pre_2020_date_ranges():
+    project = _fixture_project()
+    project["library"]["entries"][0]["date"] = "January 2019"
+    result = simulate_ats_parse(project, "v1")
+    assert "chronology" not in [warning["type"] for warning in result["warnings"]]
+
+
+def test_phone_regex_returns_full_match():
+    assert PHONE_REGEX.findall("Call +1 (555) 123-4567") == ["+1 (555) 123-4567"]
+
+
+def test_match_request_rejects_oversized_input():
+    try:
+        MatchRequest(resume_text="x" * 100_001, job_description="engineer")
+        raise AssertionError("oversized input should fail validation")
+    except ValidationError:
+        pass
 
 
 def test_ollama_status_and_polishing():
@@ -120,6 +151,18 @@ def test_ollama_status_and_polishing():
     print("[OK] Ollama client and bullet polishing passed.")
 
 
+def test_fallback_never_invents_metrics():
+    fallback = generate_rule_based_fallback(
+        "Worked on fixing bugs and helped the team with tests."
+    )
+    joined = " ".join(fallback.values())
+    assert not re.search(r"\d+\s*%", joined), "Fallback must not invent percentages"
+    assert "35%" not in joined
+    assert "automated test suites" not in joined.lower()
+    assert "[add a verified metric" in fallback["quantified"].lower()
+    assert all(len(value) > 10 for value in fallback.values())
+
+
 def test_ner_dataset_and_evaluation():
     data = generate_synthetic_dataset(num_samples=20, seed=123)
     assert len(data) == 20, "Should generate 20 annotated samples"
@@ -137,7 +180,11 @@ if __name__ == "__main__":
     test_xyz_scoring()
     test_job_matching()
     test_ats_simulator()
+    test_ats_accepts_pre_2020_date_ranges()
+    test_phone_regex_returns_full_match()
+    test_match_request_rejects_oversized_input()
     test_ollama_status_and_polishing()
+    test_fallback_never_invents_metrics()
     test_ner_dataset_and_evaluation()
     print("\nALL PYTHON ML TESTS PASSED SUCCESSFULLY!")
 

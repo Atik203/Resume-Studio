@@ -21,7 +21,7 @@ export async function GET() {
     }
 
     const data = await res.json();
-    return NextResponse.json({ status: 'online', ...data });
+    return NextResponse.json({ ...data, status: 'online' });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Service unreachable';
     return NextResponse.json({ status: 'offline', message });

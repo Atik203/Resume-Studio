@@ -110,7 +110,7 @@ test('optional typed-link marks keep the human-readable link label and URL', () 
   const project = structuredClone(fixtureProject);
   project.variants[0].design.showContactIcons = true;
   const rendered = renderLatex(resolveVariant(project, project.variants[0]));
-  assert.match(rendered, /\[PORT\].*Portfolio/);
+  assert.match(rendered, /\\faBriefcase.*Portfolio/);
   assert.match(rendered, /\\href\{\\detokenize\{https:\/\/example\.test\/?\}\}/);
 });
 
@@ -123,6 +123,29 @@ test('section-scoped font, margin, padding, and divider settings render into the
   assert.match(rendered, /vspace\{2pt\}\\fontsize\{11pt\}/);
   assert.match(rendered, /ResumeSection\{Skills\}\{0pt\}\{\\dimexpr\\linewidth-5mm-3mm/);
   assert.throws(() => validateProject({ ...project, variants: [{ ...project.variants[0], sections: [{ ...project.variants[0].sections[0], design: { fontSizePt: 40 } }, ...project.variants[0].sections.slice(1)] }] }), /valid variant/i);
+});
+
+test('link display, underline, entry locations, and divider widths render', () => {
+  const project = structuredClone(fixtureProject);
+  project.library.profile.links = [{ type: 'github', label: 'GitHub', url: 'https://github.com/example' }];
+  project.library.entries[0].location = 'Dhaka';
+  const variant = project.variants[0];
+  variant.design = {
+    ...variant.design,
+    linkDisplay: 'url',
+    linkUnderline: false,
+    showEntryLocations: false,
+    dividerWidth: 'half',
+  };
+  variant.sections[0].design = { dividerWidth: 'label' };
+
+  const rendered = renderLatex(resolveVariant(project, variant));
+
+  assert.match(rendered, /\\href\{\\detokenize\{https:\/\/github\.com\/example\}\}\{https:\/\/github\.com\/example\}/);
+  assert.doesNotMatch(rendered, /\\underline\{https:\/\/github/);
+  assert.doesNotMatch(rendered, /Dhaka/);
+  assert.match(rendered, /0\.5\\linewidth/);
+  assert.match(rendered, /\\resumesectionwidth/);
 });
 
 test('validated local font choices select the matching TeX Live package', () => {

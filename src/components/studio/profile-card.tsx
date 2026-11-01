@@ -10,6 +10,7 @@ import {
   BriefcaseBusiness,
   Camera,
   Crop,
+  ExternalLink,
   Github,
   Globe,
   Linkedin,
@@ -57,8 +58,30 @@ export function ProfileCard({
   onRemovePhoto,
 }: ProfileCardProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [linkDraft, setLinkDraft] = useState<{ index: number; value: string } | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const currentPhoto = profileOverrides.photoDataUrl ?? profile.photoDataUrl;
   const currentLinks = profileOverrides.links ?? profile.links;
+
+  function isSafeLinkUrl(value: string): boolean {
+    try {
+      return ['http:', 'https:', 'mailto:'].includes(new URL(value).protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  function commitLinkUrl(index: number, value: string) {
+    if (!isSafeLinkUrl(value)) {
+      setLinkError('Use a full http(s) or mailto URL, for example https://example.com.');
+      return;
+    }
+    const links = [...currentLinks];
+    links[index] = { ...links[index], url: value };
+    onEditLinks(links);
+    setLinkError(null);
+    setLinkDraft(null);
+  }
   const hasOverrides = Object.keys(profileOverrides).length > 0;
 
   const name = profileOverrides.name ?? profile.name;
@@ -332,9 +355,19 @@ export function ProfileCard({
           </div>
 
           {/* Contact Links */}
-          <div className="pt-2 border-t border-neutral-200">
-            <div className="text-xs font-bold text-neutral-800 mb-2">Websites & Social Links</div>
-            <div className="space-y-2">
+          <div className="pt-3 border-t border-border">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <div className="text-xs font-bold text-foreground">Websites & Social Links</div>
+                <p className="text-[11px] text-muted-foreground">
+                  Display style and underline live in Customize → Layout &amp; Contact Visibility.
+                </p>
+              </div>
+              <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                {currentLinks.length} {currentLinks.length === 1 ? 'link' : 'links'}
+              </span>
+            </div>
+            <div className="space-y-2.5">
               {currentLinks.map((link, index) => {
                 const Icon =
                   link.type === 'linkedin'
@@ -347,70 +380,116 @@ export function ProfileCard({
                     ? LinkIcon
                     : Globe;
                 return (
-                  <div key={index} className="flex items-center gap-2">
-                    <NativeSelect
-                      size="default"
-                      aria-label="Link type"
-                      value={link.type}
-                      className="w-28 text-xs rounded-xl"
-                      onChange={e => {
-                        const links = [...currentLinks];
-                        links[index] = { ...links[index], type: e.target.value as ContactLinkType };
-                        onEditLinks(links);
-                      }}
-                    >
-                      {contactTypes.map(item => (
-                        <NativeSelectOption key={item.id} value={item.id}>
-                          {item.label}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                    <span className="text-neutral-400">
-                      <Icon size={16} />
-                    </span>
-                    <Input
-                      aria-label="Link label"
-                      value={link.label}
-                      className="w-32 text-xs rounded-xl"
-                      onChange={e => {
-                        const links = [...currentLinks];
-                        links[index] = { ...links[index], label: e.target.value };
-                        onEditLinks(links);
-                      }}
-                      placeholder="Label"
-                    />
-                    <Input
-                      aria-label="Link URL"
-                      value={link.url}
-                      className="flex-1 text-xs rounded-xl"
-                      onChange={e => {
-                        const links = [...currentLinks];
-                        links[index] = { ...links[index], url: e.target.value };
-                        onEditLinks(links);
-                      }}
-                      placeholder="https://..."
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => onEditLinks(currentLinks.filter((_, i) => i !== index))}
-                      className="text-neutral-400 hover:text-rose-600"
-                    >
-                      ×
-                    </Button>
+                  <div key={index} className="rounded-xl border border-border bg-muted/30 p-2.5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <Icon size={15} />
+                      </span>
+                      <NativeSelect
+                        size="default"
+                        aria-label="Link type"
+                        value={link.type}
+                        className="h-8 w-32 text-xs rounded-lg"
+                        onChange={e => {
+                          const links = [...currentLinks];
+                          links[index] = { ...links[index], type: e.target.value as ContactLinkType };
+                          onEditLinks(links);
+                        }}
+                      >
+                        {contactTypes.map(item => (
+                          <NativeSelectOption key={item.id} value={item.id}>
+                            {item.label}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                      <span className="hidden sm:inline whitespace-nowrap shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Link {index + 1}
+                      </span>
+                      <div className="ml-auto flex items-center gap-1">
+                        {isSafeLinkUrl(link.url) && (
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${link.label || link.type}`}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-muted transition-colors"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Remove ${link.label || link.type} link`}
+                          onClick={() => {
+                            setLinkDraft(null);
+                            setLinkError(null);
+                            onEditLinks(currentLinks.filter((_, i) => i !== index));
+                          }}
+                          className="text-muted-foreground hover:text-rose-600"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2">
+                      <Input
+                        aria-label="Link label"
+                        value={link.label}
+                        className="h-8 text-xs rounded-lg"
+                        onChange={e => {
+                          const links = [...currentLinks];
+                          links[index] = { ...links[index], label: e.target.value };
+                          onEditLinks(links);
+                        }}
+                        placeholder="e.g. Portfolio"
+                      />
+                      <Input
+                        aria-label="Link URL"
+                        value={linkDraft?.index === index ? linkDraft.value : link.url}
+                        className="h-8 text-xs rounded-lg"
+                        inputMode="url"
+                        autoComplete="url"
+                        onFocus={() => {
+                          if (linkDraft?.index !== index) {
+                            setLinkDraft({ index, value: link.url });
+                            setLinkError(null);
+                          }
+                        }}
+                        onChange={e => setLinkDraft({ index, value: e.target.value })}
+                        onBlur={() => {
+                          const value = linkDraft?.index === index ? linkDraft.value : link.url;
+                          commitLinkUrl(index, value);
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                          if (e.key === 'Escape') {
+                            setLinkDraft(null);
+                            setLinkError(null);
+                          }
+                        }}
+                        aria-invalid={linkDraft?.index === index && !isSafeLinkUrl(linkDraft.value) ? true : undefined}
+                        placeholder="https://example.com"
+                      />
+                    </div>
                   </div>
                 );
               })}
             </div>
+            {linkError && (
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5" role="alert">
+                {linkError}
+              </p>
+            )}
 
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="mt-3 text-xs rounded-xl border-dashed border-neutral-300 hover:border-emerald-500 hover:text-emerald-600"
+              className="mt-3 text-xs rounded-xl border-dashed border-border hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400"
               onClick={() =>
-                onEditLinks([...currentLinks, { type: 'website', label: 'Website', url: 'https://' }])
+                onEditLinks([...currentLinks, { type: 'website', label: 'Website', url: 'https://example.com' }])
               }
             >
               ＋ Add Link
