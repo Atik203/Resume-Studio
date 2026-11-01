@@ -35,10 +35,14 @@ test('profile, design, and section-design ranges match existing constraints', ()
   assert.equal(designSchema.safeParse({ ...design, fontSize: 40 }).success, false);
   assert.equal(designSchema.safeParse({ ...design, marginTopMm: 2 }).success, false);
   assert.equal(designSchema.safeParse({ ...design, accentColor: 'red' }).success, false);
+  assert.equal(designSchema.safeParse({ ...design, linkDisplay: 'both', linkUnderline: false, showEntryLocations: false, dividerWidth: 'half' }).success, true);
+  assert.equal(designSchema.safeParse({ ...design, linkDisplay: 'full' }).success, false);
 
   assert.equal(sectionDesignSchema.safeParse({ fontSizePt: 11 }).success, true);
   assert.equal(sectionDesignSchema.safeParse({ fontSizePt: 40 }).success, false);
   assert.equal(sectionDesignSchema.safeParse({ unexpected: 1 }).success, false);
+  assert.equal(sectionDesignSchema.safeParse({ dividerWidth: 'label' }).success, true);
+  assert.equal(sectionDesignSchema.safeParse({ dividerWidth: 'quarter' }).success, false);
 });
 
 test('validateProject preserves its actionable error messages', () => {

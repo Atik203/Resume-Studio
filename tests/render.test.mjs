@@ -145,3 +145,31 @@ test('markdown formatting in bullets and header layout variants compile to PDF',
     }
   }
 });
+
+test('link display, underline, and divider width options compile locally', async () => {
+  const project = structuredClone(fixtureProject);
+  project.library.profile.links = [{ type: 'github', label: 'GitHub', url: 'https://github.com/example' }];
+  const experience = project.library.entries.find(entry => entry.id === 'exp-1');
+  experience.location = 'Dhaka';
+  const variant = project.variants[0];
+  variant.design = {
+    ...variant.design,
+    linkDisplay: 'both',
+    linkUnderline: false,
+    dividerWidth: 'label',
+  };
+  variant.sections[1].design = { dividerWidth: 'half' };
+
+  const dir = await mkdtemp(path.join(tmpdir(), 'resume-studio-link-divider-test-'));
+  try {
+    await writeFile(path.join(dir, 'resume.tex'), renderLatex(resolveVariant(project, variant)), 'utf8');
+    await run(process.env.PDFLATEX_PATH || 'pdflatex', ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], dir);
+    const pdf = await readFile(path.join(dir, 'resume.pdf'));
+    assert.ok(pdf.length > 1000);
+    const text = await run('pdftotext', ['resume.pdf', '-'], dir);
+    assert.match(text, /GitHub/);
+    assert.match(text, /Dhaka/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

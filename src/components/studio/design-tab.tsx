@@ -595,21 +595,75 @@ export function DesignTab({
               </NativeSelect>
             </label>
 
+            <label>
+              <span>Divider Width</span>
+              <NativeSelect
+                value={active.design.dividerWidth ?? 'full'}
+                onChange={e =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: {
+                      ...v.design,
+                      dividerWidth: e.target.value as 'full' | 'half' | 'label',
+                    },
+                  }))
+                }
+              >
+                <NativeSelectOption value="full">Full content width</NativeSelectOption>
+                <NativeSelectOption value="half">Half width</NativeSelectOption>
+                <NativeSelectOption value="label">Heading width only</NativeSelectOption>
+              </NativeSelect>
+            </label>
+
+            <label>
+              <span>Contact Link Text</span>
+              <NativeSelect
+                value={active.design.linkDisplay ?? 'label'}
+                onChange={e =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: {
+                      ...v.design,
+                      linkDisplay: e.target.value as 'label' | 'url' | 'both',
+                    },
+                  }))
+                }
+              >
+                <NativeSelectOption value="label">Label only</NativeSelectOption>
+                <NativeSelectOption value="url">Full URL</NativeSelectOption>
+                <NativeSelectOption value="both">Label + URL</NativeSelectOption>
+              </NativeSelect>
+            </label>
+
+            <label className="setting-toggle">
+              <span>Underline Links</span>
+              <Switch
+                checked={active.design.linkUnderline ?? true}
+                onCheckedChange={checked =>
+                  onUpdateVariant(v => ({
+                    ...v,
+                    design: { ...v.design, linkUnderline: checked },
+                  }))
+                }
+              />
+            </label>
+
             {(
               [
                 ['showEmail', 'Show Email'],
                 ['showPhone', 'Show Phone'],
-                ['showLocation', 'Show Location'],
+                ['showLocation', 'Show Header Location'],
+                ['showEntryLocations', 'Show Entry Locations'],
                 ['showLinks', 'Show Links'],
                 ['pageNumbers', 'Page Numbers'],
                 ['showDividers', 'Section Divider Lines'],
-                ['showContactIcons', 'Contact Icons'],
+                ['showContactIcons', 'Link Type Icons'],
               ] as const
             ).map(([field, label]) => (
               <label className="setting-toggle" key={field}>
                 <span>{label}</span>
                 <Switch
-                  checked={active.design[field]}
+                  checked={active.design[field] ?? true}
                   onCheckedChange={checked =>
                     onUpdateVariant(v => ({
                       ...v,

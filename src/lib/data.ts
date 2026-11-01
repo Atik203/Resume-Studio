@@ -3,6 +3,8 @@ import { entrySchema, profileSchema, variantSchema } from './schema.ts';
 export type TemplateId = 't01-simple-ats' | 't02-clean-compact' | 't03-modern-developer' | 't04-academic-cv' | 't05-profile-cv';
 export type DocumentMode = 'resume' | 'cv';
 export type ContactLinkType = 'website' | 'linkedin' | 'github' | 'portfolio' | 'other';
+export type LinkDisplay = 'label' | 'url' | 'both';
+export type DividerWidth = 'full' | 'half' | 'label';
 export type FontFamily = 'serif' | 'sans' | 'latin-modern-serif' | 'latin-modern-sans' | 'tex-gyre-termes' | 'tex-gyre-heros' | 'tex-gyre-pagella' | 'tex-gyre-schola' | 'tex-gyre-cursor';
 export interface ContactLink { type: ContactLinkType; label: string; url: string }
 
@@ -16,6 +18,7 @@ export interface SectionDesignSettings {
   paddingBottomPt?: number;
   showDivider?: boolean;
   dividerWeightPt?: number;
+  dividerWidth?: DividerWidth;
   pageBreakBefore?: boolean;
 }
 
@@ -69,14 +72,18 @@ export interface DesignSettings {
   showEmail: boolean;
   showPhone: boolean;
   showLocation: boolean;
+  showEntryLocations?: boolean;
   showLinks: boolean;
   pageNumbers: boolean;
   sectionGapPt: number;
   entryGapPt: number;
   bulletIndentMm: number;
   dividerWeightPt: number;
+  dividerWidth?: DividerWidth;
   showDividers: boolean;
   showContactIcons: boolean;
+  linkDisplay?: LinkDisplay;
+  linkUnderline?: boolean;
   headerLayout?: HeaderLayout;
   dividerStyle?: DividerStyle;
   /**

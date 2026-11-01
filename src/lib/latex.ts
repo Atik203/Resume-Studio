@@ -64,19 +64,39 @@ export function safeUrl(raw: string): string | null {
   } catch { return null; }
 }
 
-function link(label: string, rawUrl: string): string {
+function link(label: string, rawUrl: string, underline = true): string {
   const url = safeUrl(rawUrl);
   if (!url) return escapeLatex(label);
-  return `\\href{\\detokenize{${url}}}{\\underline{${escapeLatex(label)}}}`;
+  const text = escapeLatex(label);
+  return underline
+    ? `\\href{\\detokenize{${url}}}{\\underline{${text}}}`
+    : `\\href{\\detokenize{${url}}}{${text}}`;
 }
 
-function linkWithType(item: { type: string; label: string; url: string }, showMarker: boolean): string {
-  const marker = ({ website: 'WEB', linkedin: 'IN', github: 'GH', portfolio: 'PORT', other: 'LINK' } as Record<string, string>)[item.type] ?? 'LINK';
-  return `${showMarker ? `\\textsf{\\scriptsize [${marker}]}\\,` : ''}${link(item.label, item.url)}`;
+function linkWithType(
+  item: { type: string; label: string; url: string },
+  showMarker: boolean,
+  display: 'label' | 'url' | 'both' = 'label',
+  underline = true
+): string {
+  const marker = ({
+    website: '\\faGlobe',
+    linkedin: '\\faLinkedin',
+    github: '\\faGithub',
+    portfolio: '\\faBriefcase',
+    other: '\\faLink',
+  } as Record<string, string>)[item.type] ?? '\\faLink';
+  const text = display === 'url' ? item.url : display === 'both' ? `${item.label} (${item.url})` : item.label;
+  return `${showMarker ? `{\\scriptsize\\color{accent}${marker}}\\,` : ''}${link(text, item.url, underline)}`;
 }
 
-function inlineLinks(links: { type: string; label: string; url: string }[], showMarkers: boolean): string {
-  return links.map(item => linkWithType(item, showMarkers)).join(' \\quad ');
+function inlineLinks(
+  links: { type: string; label: string; url: string }[],
+  showMarkers: boolean,
+  display: 'label' | 'url' | 'both' = 'label',
+  underline = true
+): string {
+  return links.map(item => linkWithType(item, showMarkers, display, underline)).join(' \\quad ');
 }
 
 export function renderLatex(resume: ResolvedVariant): string {
@@ -98,7 +118,9 @@ export function renderLatex(resume: ResolvedVariant): string {
   const fontSwitch = ['sans', 'latin-modern-sans', 'tex-gyre-heros'].includes(fontFamily) ? '\\renewcommand{\\familydefault}{\\sfdefault}'
     : fontFamily === 'tex-gyre-cursor' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : '';
   const p = resume.profile;
-  const contacts = [resume.design.showEmail && p.email && link(p.email, `mailto:${p.email}`), resume.design.showPhone && p.phone && escapeLatex(p.phone), ...(resume.design.showLinks ? p.links.map(l => linkWithType(l, resume.design.showContactIcons)) : [])].filter(Boolean).join(' \\quad ');
+  const linkDisplay = resume.design.linkDisplay ?? 'label';
+  const linkUnderline = resume.design.linkUnderline ?? true;
+  const contacts = [resume.design.showEmail && p.email && link(p.email, `mailto:${p.email}`, linkUnderline), resume.design.showPhone && p.phone && escapeLatex(p.phone), ...(resume.design.showLinks ? p.links.map(l => linkWithType(l, resume.design.showContactIcons, linkDisplay, linkUnderline)) : [])].filter(Boolean).join(' \\quad ');
   const entriesById = new Map(resume.entries.map(entry => [entry.id, entry]));
   const body = resume.sections.filter(section => section.visible).map(section => {
     const sectionEntries = section.entryIds.flatMap(id => entriesById.has(id) ? [entriesById.get(id)!] : []);
@@ -110,11 +132,11 @@ export function renderLatex(resume: ResolvedVariant): string {
       }
       const heading = [entry.title, entry.subtitle].filter(Boolean).map(escapeLatex).join(' | ');
       const date = entry.date ? (resume.design.dateAlignment === 'right' ? `\\hfill{\\small ${escapeLatex(entry.date)}}` : `\\par{\\small ${escapeLatex(entry.date)}}`) : '';
-      const location = entry.location ? `\\par{\\small ${escapeLatex(entry.location)}}` : '';
+      const location = entry.location && resume.design.showEntryLocations !== false ? `\\par{\\small ${escapeLatex(entry.location)}}` : '';
       const description = entry.description ? `\\par ${formatMarkdownLatex(entry.description)}` : '';
       const bullets = entry.bullets.length ? `\\begin{itemize}[leftmargin=${resume.design.bulletIndentMm}mm,itemsep=${resume.design.bulletSpacing}pt,topsep=2pt]\n${entry.bullets.map(b => `\\item ${formatMarkdownLatex(b)}`).join('\n')}\\end{itemize}` : '';
       const technologies = entry.technologies.length ? `\\par\\textbf{Technologies:} ${entry.technologies.map(escapeLatex).join(', ')}` : '';
-      const links = entry.links.length ? `\\par\\smallskip ${inlineLinks(entry.links, resume.design.showContactIcons)}` : '';
+      const links = entry.links.length ? `\\par\\smallskip ${inlineLinks(entry.links, resume.design.showContactIcons, linkDisplay, linkUnderline)}` : '';
       return `\\par\\smallskip\\noindent\\textbf{${heading}}${date}${location}${description}${bullets}${technologies}${links}`;
     }).join(`\n\\vspace{${resume.design.entryGapPt}pt}\n`);
     const style = section.design ?? {};
@@ -124,8 +146,14 @@ export function renderLatex(resume: ResolvedVariant): string {
     const marginRight = style.marginRightMm ?? 0;
     const divider = style.showDivider ?? resume.design.showDividers;
     const dividerWeight = divider ? (style.dividerWeightPt ?? resume.design.dividerWeightPt) : 0;
+    const dividerWidth = style.dividerWidth ?? resume.design.dividerWidth ?? 'full';
+    const ruleWidth = dividerWidth === 'label'
+      ? '\\resumesectionwidth'
+      : dividerWidth === 'half'
+        ? '0.5\\linewidth'
+        : `\\dimexpr\\linewidth-${marginLeft}mm-${marginRight}mm\\relax`;
     const pageBreak = style.pageBreakBefore ? '\\clearpage\\noindent ' : '';
-    return `${pageBreak}\\par\\vspace{${style.marginTopPt ?? 0}pt}\\begingroup\\setlength{\\leftskip}{${marginLeft}mm}\\setlength{\\rightskip}{${marginRight}mm}\\vspace{${style.paddingTopPt ?? 0}pt}\\fontsize{${sectionSize}pt}{${sectionBaseline}pt}\\selectfont\\ResumeSection{${escapeLatex(section.label)}}{${dividerWeight}pt}{\\dimexpr\\linewidth-${marginLeft}mm-${marginRight}mm\\relax}\n${rows}\\par\\vspace{${style.paddingBottomPt ?? 0}pt}\\endgroup\\par\\vspace{${style.marginBottomPt ?? 0}pt}`;
+    return `${pageBreak}\\par\\vspace{${style.marginTopPt ?? 0}pt}\\begingroup\\setlength{\\leftskip}{${marginLeft}mm}\\setlength{\\rightskip}{${marginRight}mm}\\vspace{${style.paddingTopPt ?? 0}pt}\\fontsize{${sectionSize}pt}{${sectionBaseline}pt}\\selectfont\\ResumeSection{${escapeLatex(section.label)}}{${dividerWeight}pt}{${ruleWidth}}\n${rows}\\par\\vspace{${style.paddingBottomPt ?? 0}pt}\\endgroup\\par\\vspace{${style.marginBottomPt ?? 0}pt}`;
   }).filter(Boolean).join('\n\\medskip\n');
 
   const name = escapeLatex(p.name || 'Your Name');
@@ -163,6 +191,7 @@ export function renderLatex(resume: ResolvedVariant): string {
 \usepackage{microtype}
 \usepackage{enumitem}
 \usepackage{graphicx}
+\usepackage{fontawesome5}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \definecolor{accent}{HTML}{${color}}
@@ -172,7 +201,8 @@ export function renderLatex(resume: ResolvedVariant): string {
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{${compact ? '1pt' : '2pt'}}
 \renewcommand{\baselinestretch}{${leading}}
-\newcommand{\ResumeSection}[3]{\par\addvspace{${resume.design.sectionGapPt}pt}\noindent{\large\bfseries\color{${modern ? 'accent' : 'bodytext'}} #1}\par\vspace{1pt}\noindent${ruleMacro}\par\vspace{2pt}}
+\newlength{\resumesectionwidth}
+\newcommand{\ResumeSection}[3]{\par\addvspace{${resume.design.sectionGapPt}pt}\settowidth{\resumesectionwidth}{\large\bfseries #1}\noindent{\large\bfseries\color{${modern ? 'accent' : 'bodytext'}} #1}\par\vspace{1pt}\noindent${ruleMacro}\par\vspace{2pt}}
 \begin{document}
 ${fontSwitch}
 \fontsize{${fs}pt}{${baseline}pt}\selectfont

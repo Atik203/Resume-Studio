@@ -177,7 +177,7 @@ export default function Studio() {
   useEffect(() => {
     // Ensure editor content always resets gracefully to top on variant or pane switch
     const timer = setTimeout(() => {
-      const container = document.querySelector('.editor-content');
+      const container = document.querySelector('.editor-content, .editor-scroll');
       if (container) container.scrollTop = 0;
     }, 40);
     return () => clearTimeout(timer);
@@ -1313,6 +1313,7 @@ export default function Studio() {
                       onEditDesign={patch => editSectionDesign(section.id, patch)}
                       defaultFontSize={active.design.fontSize}
                       defaultDividerWeight={active.design.dividerWeightPt}
+                      defaultDividerWidth={active.design.dividerWidth ?? 'full'}
                       defaultShowDividers={active.design.showDividers}
                     >
                       {/* Entries */}
@@ -1430,23 +1431,27 @@ export default function Studio() {
             </div>
           ) : activePane === 'design' ? (
             /* Design Tab */
-            <DesignTab
-              active={active}
-              designMode={designMode}
-              onChangeDesignMode={setDesignMode}
-              onUpdateVariant={updateVariant}
-              onOpenPageFitModal={() => setShowPageFitModal(true)}
-              onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
-              onExportZip={exportLatexZip}
-              onOpenSnapshots={() => setShowSnapshotModal(true)}
-            />
+            <div className="editor-scroll">
+              <DesignTab
+                active={active}
+                designMode={designMode}
+                onChangeDesignMode={setDesignMode}
+                onUpdateVariant={updateVariant}
+                onOpenPageFitModal={() => setShowPageFitModal(true)}
+                onOpenLatexInspector={() => setShowLatexInspectorModal(true)}
+                onExportZip={exportLatexZip}
+                onOpenSnapshots={() => setShowSnapshotModal(true)}
+              />
+            </div>
           ) : (
             /* ATS Matcher & Robot Simulator Tab */
-            <AtsPanel
-              project={project}
-              activeVariant={active}
-              onAddSkillToResume={addSkillToResume}
-            />
+            <div className="editor-scroll">
+              <AtsPanel
+                project={project}
+                activeVariant={active}
+                onAddSkillToResume={addSkillToResume}
+              />
+            </div>
           )}
         </section>
 

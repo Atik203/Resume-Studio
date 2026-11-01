@@ -95,10 +95,15 @@ export function BulletPolishModal({
 
   if (!isOpen) return null;
 
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+  const handleCopy = async (text: string, key: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      setError('Clipboard access was blocked by the browser. Select the suggestion and copy it manually.');
+    }
   };
 
   const handleReplace = (v: PolishVariation) => {
