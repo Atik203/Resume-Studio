@@ -2,6 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { ToastProvider } from '@/components/ui/toast';
+import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 
 const Studio = dynamic(() => import('../studio'), {
   ssr: false,
@@ -18,7 +20,11 @@ const Studio = dynamic(() => import('../studio'), {
 export default function EditorPage() {
   return (
     <ErrorBoundary>
-      <Studio />
+      <ToastProvider>
+        <ConfirmProvider>
+          <Studio />
+        </ConfirmProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }
