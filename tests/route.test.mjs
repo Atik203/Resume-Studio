@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { POST } from '../src/app/api/compile/route.ts';
+import { GET as mlHealth } from '../src/app/api/ml/health/route.ts';
 import { fixtureProject } from '../src/lib/fixture.ts';
 
 test('local compile route returns a verified PDF and page metadata', async () => {
@@ -84,4 +85,22 @@ test('local compile route cancels the child process when the preview request is 
   setTimeout(() => controller.abort(), 50);
   const response = await compilation;
   assert.equal(response.status, 499);
+});
+
+test('ML health proxy normalizes the Python status to online', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    status: 'ok',
+    service: 'resume-studio-ml',
+    ollama: { online: true },
+  }), { status: 200, headers: { 'content-type': 'application/json' } });
+
+  try {
+    const response = await mlHealth();
+    const data = await response.json();
+    assert.equal(data.status, 'online');
+    assert.equal(data.ollama.online, true);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
