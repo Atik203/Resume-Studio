@@ -33,6 +33,6 @@ Include the affected version, reproduction steps, impact, and any suggested fix.
 - Resume data and photos stay in the browser's IndexedDB. Backups are explicit local JSON downloads.
 - The optional ML service is loopback-only and does not call cloud APIs. Ollama is optional and local.
 
-## Known data-history note
+## Data ownership
 
-The private reference PDFs were removed from the current tree and from the rewritten Git history. GitHub may continue to serve cached old commit objects after a force-push; complete erasure may require GitHub Support or deleting/recreating the repository. See `docs/privacy-cleanup.md`.
+The reference PDFs are the repository owner's resume and may remain public. The owner has confirmed that no history purge is required. The current working tree keeps local copies in the gitignored `reference/` directory; this is an organizational choice, not a confidentiality claim.
