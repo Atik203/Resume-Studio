@@ -15,6 +15,7 @@ import { fixtureProject } from '@/lib/fixture';
 import { loadProject } from '@/lib/storage';
 import { useAutosave } from '@/hooks/use-autosave';
 import { useCompilePreview } from '@/hooks/use-compile-preview';
+import { useEntryDrag, useSectionDrag } from '@/hooks/use-drag-reorder';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
@@ -118,12 +119,6 @@ export default function Studio() {
   useDismiss(exportMenuRef, () => setShowExportMenu(false), showExportMenu);
   useDismiss(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu);
 
-  // Drag and drop state
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
-  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null);
-  const [draggedEntryInfo, setDraggedEntryInfo] = useState<{ sectionId: string; index: number } | null>(null);
-  const [dragOverEntryIndex, setDragOverEntryIndex] = useState<number | null>(null);
-
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
   const { saveState, saveStateText, markSaving, markLoaded, reportLoadError } = useAutosave(project, ready);
@@ -210,6 +205,43 @@ export default function Studio() {
       })),
     [updateProject]
   );
+
+  const {
+    draggedIndex: draggedSectionIndex,
+    overIndex: dragOverSectionIndex,
+    onDragStart: onSectionDragStart,
+    onDragOver: onSectionDragOver,
+    onDrop: onSectionDrop,
+    onDragEnd: onSectionDragEnd,
+  } = useSectionDrag((from, to) => {
+    updateVariant(v => {
+      const sections = [...v.sections];
+      const [removed] = sections.splice(from, 1);
+      sections.splice(to, 0, removed);
+      return { ...v, sections };
+    });
+  });
+
+  const {
+    draggedSectionId: draggedEntrySectionId,
+    draggedIndex: draggedEntryIndex,
+    overIndex: dragOverEntryIndex,
+    onDragStart: onEntryDragStart,
+    onDragOver: onEntryDragOver,
+    onDrop: onEntryDrop,
+    onDragEnd: onEntryDragEnd,
+  } = useEntryDrag((sectionId, from, to) => {
+    updateVariant(v => ({
+      ...v,
+      sections: v.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        const ids = [...s.entryIds];
+        const [removed] = ids.splice(from, 1);
+        ids.splice(to, 0, removed);
+        return { ...s, entryIds: ids };
+      }),
+    }));
+  });
 
   const selectedEntries = useMemo(
     () => new Map(project.library.entries.map(entry => [entry.id, entry])),
@@ -530,79 +562,6 @@ export default function Studio() {
         return { ...s, entryIds: ids };
       }),
     }));
-  }
-
-  // Drag and drop handlers
-  function onSectionDragStart(e: React.DragEvent, index: number) {
-    setDraggedSectionIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `section:${index}`);
-  }
-
-  function onSectionDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    if (draggedSectionIndex !== null && draggedSectionIndex !== index) {
-      setDragOverSectionIndex(index);
-    }
-  }
-
-  function onSectionDrop(e: React.DragEvent, targetIndex: number) {
-    e.preventDefault();
-    if (draggedSectionIndex !== null && draggedSectionIndex !== targetIndex) {
-      updateVariant(v => {
-        const sections = [...v.sections];
-        const [removed] = sections.splice(draggedSectionIndex, 1);
-        sections.splice(targetIndex, 0, removed);
-        return { ...v, sections };
-      });
-    }
-    setDraggedSectionIndex(null);
-    setDragOverSectionIndex(null);
-  }
-
-  function onSectionDragEnd() {
-    setDraggedSectionIndex(null);
-    setDragOverSectionIndex(null);
-  }
-
-  function onEntryDragStart(e: React.DragEvent, sectionId: string, index: number) {
-    setDraggedEntryInfo({ sectionId, index });
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `entry:${sectionId}:${index}`);
-  }
-
-  function onEntryDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    if (draggedEntryInfo !== null && draggedEntryInfo.index !== index) {
-      setDragOverEntryIndex(index);
-    }
-  }
-
-  function onEntryDrop(e: React.DragEvent, sectionId: string, targetIndex: number) {
-    e.preventDefault();
-    if (
-      draggedEntryInfo !== null &&
-      draggedEntryInfo.sectionId === sectionId &&
-      draggedEntryInfo.index !== targetIndex
-    ) {
-      updateVariant(v => ({
-        ...v,
-        sections: v.sections.map(s => {
-          if (s.id !== sectionId) return s;
-          const ids = [...s.entryIds];
-          const [removed] = ids.splice(draggedEntryInfo.index, 1);
-          ids.splice(targetIndex, 0, removed);
-          return { ...s, entryIds: ids };
-        }),
-      }));
-    }
-    setDraggedEntryInfo(null);
-    setDragOverEntryIndex(null);
-  }
-
-  function onEntryDragEnd() {
-    setDraggedEntryInfo(null);
-    setDragOverEntryIndex(null);
   }
 
   // Formatting helpers
@@ -1368,10 +1327,10 @@ export default function Studio() {
                         if (!master) return null;
                         const entry = { ...master, ...active.entryOverrides[entryId] };
                         const isEntryDragging =
-                          draggedEntryInfo?.sectionId === section.id && draggedEntryInfo.index === entryIndex;
+                          draggedEntrySectionId === section.id && draggedEntryIndex === entryIndex;
                         const entryDragDirection =
-                          draggedEntryInfo?.sectionId === section.id && dragOverEntryIndex === entryIndex
-                            ? draggedEntryInfo.index < entryIndex
+                          draggedEntrySectionId === section.id && dragOverEntryIndex === entryIndex
+                            ? draggedEntryIndex !== null && draggedEntryIndex < entryIndex
                               ? 'bottom'
                               : 'top'
                             : null;
