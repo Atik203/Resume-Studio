@@ -57,8 +57,30 @@ export function ProfileCard({
   onRemovePhoto,
 }: ProfileCardProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [linkDraft, setLinkDraft] = useState<{ index: number; value: string } | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const currentPhoto = profileOverrides.photoDataUrl ?? profile.photoDataUrl;
   const currentLinks = profileOverrides.links ?? profile.links;
+
+  function isSafeLinkUrl(value: string): boolean {
+    try {
+      return ['http:', 'https:', 'mailto:'].includes(new URL(value).protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  function commitLinkUrl(index: number, value: string) {
+    if (!isSafeLinkUrl(value)) {
+      setLinkError('Use a full http(s) or mailto URL, for example https://example.com.');
+      return;
+    }
+    const links = [...currentLinks];
+    links[index] = { ...links[index], url: value };
+    onEditLinks(links);
+    setLinkError(null);
+    setLinkDraft(null);
+  }
   const hasOverrides = Object.keys(profileOverrides).length > 0;
 
   const name = profileOverrides.name ?? profile.name;
@@ -381,20 +403,38 @@ export function ProfileCard({
                     />
                     <Input
                       aria-label="Link URL"
-                      value={link.url}
+                      value={linkDraft?.index === index ? linkDraft.value : link.url}
                       className="flex-1 text-xs rounded-xl"
-                      onChange={e => {
-                        const links = [...currentLinks];
-                        links[index] = { ...links[index], url: e.target.value };
-                        onEditLinks(links);
+                      onFocus={() => {
+                        if (linkDraft?.index !== index) {
+                          setLinkDraft({ index, value: link.url });
+                          setLinkError(null);
+                        }
                       }}
-                      placeholder="https://..."
+                      onChange={e => setLinkDraft({ index, value: e.target.value })}
+                      onBlur={() => {
+                        const value = linkDraft?.index === index ? linkDraft.value : link.url;
+                        commitLinkUrl(index, value);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                        if (e.key === 'Escape') {
+                          setLinkDraft(null);
+                          setLinkError(null);
+                        }
+                      }}
+                      aria-invalid={linkDraft?.index === index && !isSafeLinkUrl(linkDraft.value) ? true : undefined}
+                      placeholder="https://example.com"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onEditLinks(currentLinks.filter((_, i) => i !== index))}
+                      onClick={() => {
+                        setLinkDraft(null);
+                        setLinkError(null);
+                        onEditLinks(currentLinks.filter((_, i) => i !== index));
+                      }}
                       className="text-neutral-400 hover:text-rose-600"
                     >
                       ×
@@ -403,6 +443,11 @@ export function ProfileCard({
                 );
               })}
             </div>
+            {linkError && (
+              <p className="text-[11px] text-rose-600 mt-1.5" role="alert">
+                {linkError}
+              </p>
+            )}
 
             <Button
               type="button"
@@ -410,7 +455,7 @@ export function ProfileCard({
               size="sm"
               className="mt-3 text-xs rounded-xl border-dashed border-neutral-300 hover:border-emerald-500 hover:text-emerald-600"
               onClick={() =>
-                onEditLinks([...currentLinks, { type: 'website', label: 'Website', url: 'https://' }])
+                onEditLinks([...currentLinks, { type: 'website', label: 'Website', url: 'https://example.com' }])
               }
             >
               ＋ Add Link
