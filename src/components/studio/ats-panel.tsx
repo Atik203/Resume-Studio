@@ -137,7 +137,7 @@ export function AtsPanel({
             />
             <span className="text-xs font-semibold">
               {health.status === 'online'
-                ? `Offline ML Engine Active (127.0.0.1:8000)`
+                ? `Local ML Engine Active (127.0.0.1:8000)`
                 : `ML Engine Offline`}
             </span>
           </div>
