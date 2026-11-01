@@ -66,6 +66,7 @@ import { NewDraftModal } from '@/components/studio/new-draft-modal';
 import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
 import { SnapshotModal } from '@/components/studio/snapshot-modal';
+import { useDismiss } from '@/hooks/use-dismiss';
 import { resolveVariant, type ResumeSnapshot } from '@/lib/data';
 
 const PREMADE_SECTIONS = [
@@ -119,6 +120,13 @@ export default function Studio() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const dragX = useRef<number | null>(null);
+  const draftMenuRef = useRef<HTMLDivElement | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useDismiss(draftMenuRef, () => setShowDraftDropdown(false), showDraftDropdown);
+  useDismiss(exportMenuRef, () => setShowExportMenu(false), showExportMenu);
+  useDismiss(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu);
 
   // Drag and drop state
   const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
@@ -1000,7 +1008,7 @@ export default function Studio() {
         {/* Right: Draft Switcher + Primary Download + More Menu */}
         <div className="studio-topbar-right">
           {/* Draft Selector Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={draftMenuRef}>
             <button
               type="button"
               className="draft-selector-btn"
@@ -1063,7 +1071,7 @@ export default function Studio() {
           </div>
 
           {/* Primary Download Split Button */}
-          <div className="relative inline-flex items-center">
+          <div className="relative inline-flex items-center" ref={exportMenuRef}>
             <Button
               className="download-primary-btn"
               disabled={busy}
@@ -1128,7 +1136,7 @@ export default function Studio() {
           </div>
 
           {/* More Menu (⋮) */}
-          <div className="relative">
+          <div className="relative" ref={moreMenuRef}>
             <button
               type="button"
               className="studio-icon-btn"

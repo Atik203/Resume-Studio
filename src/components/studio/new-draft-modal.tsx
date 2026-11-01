@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useModalBehavior } from '@/hooks/use-modal-behavior';
 import { Plus } from 'lucide-react';
 
 export interface NewDraftModalProps {
@@ -22,6 +23,8 @@ export function NewDraftModal({
 }: NewDraftModalProps) {
   const [draftType, setDraftType] = useState<'resume' | 'cv'>('resume');
   const [draftName, setDraftName] = useState('');
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalBehavior(modalRef, onClose, isOpen);
 
   if (!isOpen) return null;
 
@@ -36,6 +39,7 @@ export function NewDraftModal({
 
   return (
     <div
+      ref={modalRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
       role="dialog"
       aria-modal="true"
