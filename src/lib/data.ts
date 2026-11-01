@@ -77,6 +77,10 @@ export interface DesignSettings {
   showContactIcons: boolean;
   headerLayout?: HeaderLayout;
   dividerStyle?: DividerStyle;
+  /**
+   * Adds PDF metadata tags (title/author/subject) only; it is not a PDF/A
+   * conformance flag. The field name is kept for backup compatibility.
+   */
   pdfaCompliant?: boolean;
 }
 
