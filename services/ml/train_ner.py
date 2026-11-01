@@ -1,7 +1,9 @@
 """
-Resume Studio — Custom Resume Entity Recognition (NER) Training & Evaluation Pipeline
-Fine-tunes and evaluates domain-specific developer skill & technical entity extraction.
-Uses synthetic resume corpus and the curated taxonomy to train and benchmark NER patterns.
+Resume Studio — Synthetic NER-Style Dataset Generator & Regex Benchmark
+
+Generates synthetic annotated sentences from the curated taxonomy and benchmarks
+the regex skill extractor against them. This script does not train a model and is
+not used at runtime; it exists to sanity-check taxonomy coverage.
 """
 
 import os

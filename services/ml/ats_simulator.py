@@ -7,7 +7,8 @@ import re
 from typing import Dict, List, Any, Optional
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
-PHONE_REGEX = re.compile(r"(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
+PHONE_REGEX = re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
+YEAR_REGEX = re.compile(r"\b(?:19|20)\d{2}\b")
 DATE_RANGE_REGEX = re.compile(
     r"\b(20\d\d|19\d\d)\s*[-–—/]\s*(20\d\d|19\d\d|present|current)\b",
     re.IGNORECASE
@@ -54,7 +55,7 @@ def simulate_ats_parse(project_data: Dict[str, Any], variant_id: Optional[str] =
             "message": "Valid email address was not detected or is formatted unusually.",
         })
 
-    parsed_phone = PHONE_REGEX.findall(phone)
+    parsed_phone = PHONE_REGEX.search(phone)
     if parsed_phone or len(re.findall(r"\d", phone)) >= 7:
         checks_passed += 1
     else:
@@ -101,7 +102,7 @@ def simulate_ats_parse(project_data: Dict[str, Any], variant_id: Optional[str] =
         bullets = over.get("bullets") if "bullets" in over else entry.get("bullets", [])
 
         # Check date format
-        has_standard_date = bool(DATE_RANGE_REGEX.search(date_str) or any(year in date_str for year in ["2020", "2021", "2022", "2023", "2024", "2025", "2026"]))
+        has_standard_date = bool(DATE_RANGE_REGEX.search(date_str) or YEAR_REGEX.search(date_str))
         if not has_standard_date and date_str:
             unparsed_dates += 1
 
