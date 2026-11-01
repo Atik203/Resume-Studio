@@ -363,7 +363,9 @@ export function ProfileCard({
                   Display style and underline live in Customize → Layout &amp; Contact Visibility.
                 </p>
               </div>
-              <span className="text-[10px] font-semibold text-muted-foreground shrink-0">{currentLinks.length}/6</span>
+              <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                {currentLinks.length} {currentLinks.length === 1 ? 'link' : 'links'}
+              </span>
             </div>
             <div className="space-y-2.5">
               {currentLinks.map((link, index) => {
