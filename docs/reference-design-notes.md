@@ -2,6 +2,8 @@
 
 Inspected the rendered pages at 120 dpi on 2026-10-25. These notes describe visible design only; reference text and personal details are not used as application fixtures.
 
+The two source PDFs are private, read-only inputs and live in `reference/` (gitignored). They are not application data, sample content, or fixtures, and must not be committed.
+
 ## Preferred one-page developer resume
 
 - A4 portrait, one page. The content uses a single column with broad, balanced left and right margins (roughly 7–8% of page width). There is no sidebar, photo, page number, or footer.
