@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DesignSettings, ResumeVariant, ProjectData } from '@/lib/data';
 import { optimizePageFit, type SpacingDiff } from '@/lib/page-fit-optimizer';
 import { scanEntryOrphans, type OrphanCandidate } from '@/lib/orphan-hunter';
 import { Button } from '@/components/ui/button';
-import { useModalBehavior } from '@/hooks/use-modal-behavior';
+import { DialogShell } from '@/components/ui/dialog';
 import {
   Sparkles,
   Maximize2,
@@ -65,11 +65,6 @@ export function PageFitModal({
     return list;
   }, [project, activeVariant]);
 
-  const modalRef = useRef<HTMLDivElement>(null);
-  useModalBehavior(modalRef, onClose, isOpen);
-
-  if (!isOpen) return null;
-
   const handleApplyOptimization = () => {
     onApplyDesign(optimization.proposedDesign);
     onClose();
@@ -80,8 +75,15 @@ export function PageFitModal({
   };
 
   return (
-    <div ref={modalRef} className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="page-fit-title">
-      <div className="modal-box page-fit-modal-box">
+    <DialogShell
+      open={isOpen}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+      title="Page-Fit Assistant and Spacing Intelligence"
+      description="Adjust spacing within safe typographic bounds without removing content."
+      contentClassName="modal-box page-fit-modal-box"
+    >
         {/* Modal Header */}
         <div className="modal-header">
           <div className="flex items-center gap-2">
@@ -286,7 +288,6 @@ export function PageFitModal({
             </Button>
           )}
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

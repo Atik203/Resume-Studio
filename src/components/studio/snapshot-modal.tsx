@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   History,
   Camera,
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ProjectData, ResumeSnapshot, ResolvedVariant } from '@/lib/data';
 import { loadSnapshots, saveSnapshot, deleteSnapshot } from '@/lib/storage';
-import { useModalBehavior } from '@/hooks/use-modal-behavior';
+import { DialogShell } from '@/components/ui/dialog';
 
 interface SnapshotModalProps {
   isOpen: boolean;
@@ -43,11 +43,6 @@ export function SnapshotModal({
     if (!isOpen) return;
     loadSnapshots().then((list) => setSnapshots(list));
   }, [isOpen]);
-
-  const modalRef = useRef<HTMLDivElement>(null);
-  useModalBehavior(modalRef, onClose, isOpen);
-
-  if (!isOpen) return null;
 
   const handleCreateSnapshot = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,8 +78,16 @@ export function SnapshotModal({
   };
 
   return (
-    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[88vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl text-foreground overflow-hidden">
+    <DialogShell
+      open={isOpen}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+      title="Snapshot Time Machine"
+      description="Create, restore, or fork local checkpoints of this draft."
+      contentClassName="max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden p-0"
+      overlayClassName="bg-black/80 backdrop-blur-sm"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/90">
           <div className="flex items-center gap-3">
@@ -254,7 +257,6 @@ export function SnapshotModal({
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }

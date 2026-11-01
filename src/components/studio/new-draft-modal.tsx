@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useModalBehavior } from '@/hooks/use-modal-behavior';
+import { DialogShell } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 
 export interface NewDraftModalProps {
@@ -23,10 +23,6 @@ export function NewDraftModal({
 }: NewDraftModalProps) {
   const [draftType, setDraftType] = useState<'resume' | 'cv'>('resume');
   const [draftName, setDraftName] = useState('');
-  const modalRef = useRef<HTMLDivElement>(null);
-  useModalBehavior(modalRef, onClose, isOpen);
-
-  if (!isOpen) return null;
 
   function handleSubmit() {
     const fallback =
@@ -38,14 +34,15 @@ export function NewDraftModal({
   }
 
   return (
-    <div
-      ref={modalRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="new-draft-modal-title"
+    <DialogShell
+      open={isOpen}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+      title="Create New Draft"
+      description="Choose a resume or CV draft. The master profile and entries stay shared."
+      contentClassName="max-w-md w-full p-6 flex flex-col gap-5"
     >
-      <div className="bg-card text-card-foreground border border-border w-full max-w-md rounded-2xl p-6 shadow-2xl flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <h3 id="new-draft-modal-title" className="text-lg font-bold">
             Create New Draft
@@ -124,7 +121,6 @@ export function NewDraftModal({
             <span>Create Draft</span>
           </Button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   );
 }
