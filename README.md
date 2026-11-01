@@ -46,13 +46,15 @@ Overflow is reported from the compiled PDF page count. The editor never removes 
 ## Development commands
 
 ```powershell
-npm test
+npm test          # Node/TypeScript tests; 3 live-ML tests skip when the Python service is offline
+npm run test:python
 npm run typecheck
 npm run lint
 npm run build
+npm run verify    # typecheck + lint + JS tests + Python tests + production build
 ```
 
-The tests compile synthetic fixture content through all five templates using local `pdflatex`, verify selectable text, exercise photos, escaping, v1 backup migration, independent layout settings, cancellation, variants, and over-limit content.
+The JS suite is self-contained: it compiles synthetic fixture content through all five templates with local `pdflatex`, verifies selectable text and links, and exercises photos, escaping, v1 backup migration, independent layout settings, cancellation, variants, and over-limit content. The three tests in `tests/bullet-polish.test.mjs` that call the FastAPI service skip with a clear message unless `services/ml/run-ml.ps1` is running on `127.0.0.1:8000`.
 
 ## Add a template
 

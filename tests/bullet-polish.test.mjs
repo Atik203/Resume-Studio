@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ML_HEALTH_URL, serviceIsUp } from './helpers/services.mjs';
 
-test('bullet polish API returns 3 distinct variations with Google XYZ scores', async () => {
+test('bullet polish API returns 3 distinct variations with Google XYZ scores', async (t) => {
+  if (!(await serviceIsUp(ML_HEALTH_URL))) {
+    t.skip('Python ML service is not running on 127.0.0.1:8000');
+    return;
+  }
   const payload = {
     bullet: 'Worked on fixing bugs and helped the team with tests.',
     context: { title: 'Software Engineer', subtitle: 'Tech Corp' },
@@ -35,7 +40,11 @@ test('bullet polish API returns 3 distinct variations with Google XYZ scores', a
   }
 });
 
-test('Ollama status endpoint detects local Qwen 3.5 4B model', async () => {
+test('Ollama status endpoint detects local Qwen 3.5 4B model', async (t) => {
+  if (!(await serviceIsUp(ML_HEALTH_URL))) {
+    t.skip('Python ML service is not running on 127.0.0.1:8000');
+    return;
+  }
   const res = await fetch('http://127.0.0.1:8000/api/ollama/status');
   assert.equal(res.status, 200);
   const data = await res.json();
@@ -46,7 +55,11 @@ test('Ollama status endpoint detects local Qwen 3.5 4B model', async () => {
   assert.ok(Array.isArray(data.installed_models));
 });
 
-test('Entity extraction endpoint categorizes skills from technical bullet', async () => {
+test('Entity extraction endpoint categorizes skills from technical bullet', async (t) => {
+  if (!(await serviceIsUp(ML_HEALTH_URL))) {
+    t.skip('Python ML service is not running on 127.0.0.1:8000');
+    return;
+  }
   const payload = {
     text: 'Developed scalable microservices using TypeScript, React, Next.js, and Redis on AWS.',
   };
