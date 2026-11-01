@@ -61,6 +61,16 @@ export function useMlService() {
     };
   }, []);
 
+  // Keep retrying quietly while the AI Tools panel is open and the service is
+  // offline, so starting the local service does not require a page reload.
+  useEffect(() => {
+    if (health.status === 'online') return;
+    const timer = window.setInterval(() => {
+      void checkHealth();
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [health.status, checkHealth]);
+
   // Match resume to job description
   const matchJob = useCallback(
     async (resumeText: string, jobDescription: string) => {

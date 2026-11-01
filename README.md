@@ -48,6 +48,14 @@ npm run dev
 powershell -ExecutionPolicy Bypass -File services/ml/run-ml.ps1
 ```
 
+Or start both together in separate PowerShell windows:
+
+```powershell
+npm run dev:full
+```
+
+`dev:full` also reports whether Ollama is reachable. Ollama is optional; when it is offline, Bullet Polish returns the labeled rule-based fallback.
+
 - The service binds to `127.0.0.1:8000` and uses a curated skill taxonomy, lexical matching, and rule-based XYZ scoring. There are no cloud API keys.
 - Bullet Polish uses Ollama (`qwen3.5:4b` by default) when available. When Ollama is offline, the service returns an explicitly labeled rule-based rewrite and never invents a metric.
 - Health checks are proxied through `/api/ml/health`; the ATS panel shows the local engine and model status.
