@@ -12,7 +12,8 @@ These are intentional scope limits for the local-first V1, not hidden behavior.
 ## Local ML assistant
 
 - **The “ML” service is a rules engine, not a trained model.** Skill extraction uses a curated taxonomy with precompiled regular expressions; there is no spaCy, PyTorch, sentence-transformers, or NER model at runtime.
-- Matching is **lexical** (token overlap plus taxonomy hits), not semantic embedding similarity. The function named `compute_tf_idf_cosine` computes term-frequency cosine without IDF because there is no corpus.
+- Matching is **lexical** by default (token overlap plus taxonomy hits). If `nomic-embed-text` is installed in Ollama, the service uses local embeddings for the context score and reports `semantic_source: ollama-embedding`; otherwise it falls back to lexical overlap and the UI says so.
+- The optional spaCy NER path is available through `services/ml/requirements-ner.txt`; without it, the regex taxonomy extractor remains active. Neither path is a trained custom NER model.
 - The XYZ bullet scorer uses hand-curated verb lists, metric regexes, and a methodology keyword check. It is a heuristic, not a language model.
 - `train_ner.py` generates synthetic NER-style offsets and benchmarks the regex extractor against that synthetic data. It does not train a model and is not used at runtime.
 - Bullet Polish uses Ollama when available. The rule-based fallback never invents metrics; the UI labels it and asks the user to verify any generated number. Model-generated suggestions can still contain unverified numbers, so the UI shows a metric-provenance warning when the original bullet had none.
@@ -20,14 +21,15 @@ These are intentional scope limits for the local-first V1, not hidden behavior.
 
 ## Interface behavior
 
-- Modals close on Escape and restore focus to the triggering control, but they do **not** trap Tab focus yet. Keyboard users can tab into the page behind an open modal.
-- Dropdown menus close on outside click and Escape, but do not support arrow-key navigation.
-- There is no global toast system. Feedback appears inline, in the save pulse, or inside the relevant modal.
-- Destructive draft/section actions still use the browser's native `confirm()` dialog.
-- Visual checks in this release are manual screenshots; there is no jsdom/Testing Library component suite.
+- Modals use Radix Dialog: they trap Tab focus, close on Escape or outside click, lock page scroll, and return focus to the trigger.
+- Topbar menus use Radix DropdownMenu: arrow keys, Home/End, typeahead, Escape, and focus return are supported.
+- Transient feedback uses accessible toasts. Destructive draft, section, entry, and import-replacement actions use an in-app AlertDialog instead of native `confirm()`.
+- Playwright browser tests cover landing scroll/theme, modal focus trapping, menu dismissal, and profile-link validation. Pixel-level visual review remains manual.
+- `src/app/studio.tsx` is still larger than the original 1,100-line target (~1,170 lines); the topbar, editor header, preview pane, and major state hooks are extracted, and further splitting is a maintainability follow-up rather than a user-facing limit.
 
 ## Data
 
 - Project data lives in the current browser profile's IndexedDB. Clearing site data removes it; export a JSON backup for portability.
 - Backups validate on import. Unknown future keys are preserved because validation is predicate-only, but older app versions may not understand new fields.
 - The private reference PDFs live in `reference/` and are gitignored. They are not part of the application or its fixtures.
+- The reference PDFs are still present in the public Git history. Removing them from history requires an explicit force-push decision described in `docs/privacy-cleanup.md`.
