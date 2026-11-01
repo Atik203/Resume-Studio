@@ -6,6 +6,7 @@
 \usepackage{microtype}
 \usepackage{enumitem}
 \usepackage{graphicx}
+\usepackage{fontawesome5}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \definecolor{accent}{HTML}{315B78}
@@ -15,7 +16,8 @@
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{2pt}
 \renewcommand{\baselinestretch}{1}
-\newcommand{\ResumeSection}[3]{\par\addvspace{7pt}\noindent{\large\bfseries\color{accent} #1}\par\vspace{1pt}\noindent\color{accent}\rule{#3}{#2}\color{bodytext}\par\vspace{2pt}}
+\newlength{\resumesectionwidth}
+\newcommand{\ResumeSection}[3]{\par\addvspace{7pt}\settowidth{\resumesectionwidth}{\large\bfseries #1}\noindent{\large\bfseries\color{accent} #1}\par\vspace{1pt}\noindent\color{accent}\rule{#3}{#2}\color{bodytext}\par\vspace{2pt}}
 \begin{document}
 
 \fontsize{10pt}{12.00pt}\selectfont

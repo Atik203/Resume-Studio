@@ -80,6 +80,12 @@ function PhotoCropperContent({
         imgRef.current = img;
         drawCanvas();
       };
+      img.onerror = () => {
+        imgRef.current = null;
+        setRawImage(null);
+        drawCanvas();
+        window.alert('That image could not be decoded. Try a PNG or JPEG file.');
+      };
       img.src = rawImage;
     } else {
       imgRef.current = null;
@@ -108,12 +114,26 @@ function PhotoCropperContent({
   function handleImageFileUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      window.alert('Choose a PNG or JPEG image for the portrait.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5_000_000) {
+      window.alert('The portrait must be smaller than 5 MB.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = ev => {
       const result = ev.target?.result as string;
       setRawImage(result);
       setZoom(1);
       setPan({ x: 0, y: 0 });
+    };
+    reader.onerror = () => {
+      window.alert('Could not read the selected image. Try another PNG or JPEG file.');
+      e.target.value = '';
     };
     reader.readAsDataURL(file);
   }

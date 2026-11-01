@@ -155,10 +155,15 @@ export function LatexInspectorModal({
 
   if (!isOpen) return null;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(currentLatex);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(currentLatex);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.alert('Clipboard access was blocked by the browser. Select the source and copy it manually.');
+    }
   };
 
   const handleDownloadTex = () => {

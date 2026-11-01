@@ -5,7 +5,7 @@ These are intentional scope limits for the local-first V1, not hidden behavior.
 ## PDF and LaTeX
 
 - **PDF metadata is not PDF/A certification.** The “PDF document metadata” toggle adds title, author, and subject tags only. It does not produce an ISO 19005-conformant archive.
-- The renderer supports the Latin Modern and TeX Gyre families available in the local TeX Live installation. Characters outside the pdfLaTeX font range are rejected with their Unicode code point instead of being silently dropped.
+- The renderer supports the Latin Modern and TeX Gyre families available in the local TeX Live installation. Link-type icons use the `fontawesome5` package; it is bundled with TeX Live, and a missing package is reported as a compile error rather than dropped. Characters outside the pdfLaTeX font range are rejected with their Unicode code point instead of being silently dropped.
 - `pdflatex` and `pdftotext` must both be on `PATH` (or `PDFLATEX_PATH` must point at the executable). The app never switches to another PDF engine.
 - Page-fit suggestions are deterministic spacing adjustments within configured bounds. They are never applied without the user confirming the diff.
 
