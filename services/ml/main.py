@@ -12,10 +12,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, StringConstraints
 
 from taxonomy import extract_skills, SKILL_TAXONOMY
-from matcher import match_resume_to_job
+from matcher import match_resume_to_job, cosine_similarity
 from xyz_scorer import score_bullets_batch, analyze_bullet
 from ats_simulator import simulate_ats_parse
-from ollama_client import check_ollama_status, polish_bullet_with_qwen, DEFAULT_MODEL
+from ner import extract_entities_with_ner, ner_available
+from ollama_client import (
+    check_ollama_status,
+    polish_bullet_with_qwen,
+    get_embedding,
+    DEFAULT_MODEL,
+    EMBEDDING_MODEL,
+)
 
 logger = logging.getLogger("resume_studio_ml")
 BulletText = Annotated[str, StringConstraints(min_length=1, max_length=5_000)]
@@ -74,10 +81,13 @@ def health_check():
         "version": "1.0.0",
         "offline_private": True,
         "skills_in_taxonomy": len(SKILL_TAXONOMY),
+        "ner_available": ner_available(),
         "ollama": {
             "online": ollama_stat["online"],
             "model_available": ollama_stat["model_available"],
             "preferred_model": ollama_stat["preferred_model"],
+            "embedding_model": ollama_stat.get("embedding_model", EMBEDDING_MODEL),
+            "embedding_available": ollama_stat.get("embedding_available", False),
         },
     }
 
@@ -102,7 +112,18 @@ def get_taxonomy():
 def match_job(req: MatchRequest):
     """Calculate semantic relevance, skill overlap, and missing keywords."""
     try:
-        return match_resume_to_job(req.resume_text, req.job_description)
+        resume_embedding = get_embedding(req.resume_text)
+        jd_embedding = get_embedding(req.job_description)
+        embedding_similarity = (
+            cosine_similarity(resume_embedding, jd_embedding)
+            if resume_embedding and jd_embedding
+            else None
+        )
+        return match_resume_to_job(
+            req.resume_text,
+            req.job_description,
+            embedding_similarity=embedding_similarity,
+        )
     except Exception:
         logger.exception("Job matching failed")
         raise HTTPException(status_code=500, detail="Internal ML service error. Check the service log.")
@@ -195,7 +216,9 @@ def polish_bullet(req: PolishBulletRequest):
 def extract_entities(req: ExtractEntitiesRequest):
     """Extract skills and technical entities categorized by domain."""
     try:
-        skills = extract_skills(req.text)
+        ner_skills = extract_entities_with_ner(req.text)
+        skills = ner_skills if ner_skills is not None else extract_skills(req.text)
+        source = "spacy" if ner_skills is not None else "regex"
         categorized: Dict[str, List[str]] = {}
         for s in skills:
             info = SKILL_TAXONOMY.get(s, {"category": "Other Tools"})
@@ -206,6 +229,7 @@ def extract_entities(req: ExtractEntitiesRequest):
             "extracted_skills": skills,
             "categorized": categorized,
             "total_count": len(skills),
+            "source": source,
         }
     except Exception:
         logger.exception("Entity extraction failed")
