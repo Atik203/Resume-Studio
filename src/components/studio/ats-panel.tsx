@@ -153,12 +153,13 @@ export function AtsPanel({
           ) : (
             <div className="flex items-center gap-2">
               <span className="text-xs text-amber-500 font-mono">
-                run services/ml/run-ml.bat
+                run npm run dev:full
               </span>
               <Button
                 variant="ghost"
                 size="icon-xs"
                 title="Check again"
+                aria-label="Retry ML connection"
                 disabled={isHealthChecking}
                 onClick={checkHealth}
               >
@@ -315,6 +316,11 @@ export function AtsPanel({
                         {Math.round(matchResult.semantic_similarity * 100)}%
                       </strong>
                     </div>
+                  </div>
+                  <div className="mt-1 text-[10px] text-muted-foreground">
+                    {matchResult.semantic_source === 'ollama-embedding'
+                      ? 'Semantic embeddings · local Ollama'
+                      : 'Lexical overlap · deterministic local fallback'}
                   </div>
                 </div>
               </div>

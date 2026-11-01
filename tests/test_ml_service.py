@@ -10,10 +10,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "ml
 
 from taxonomy import extract_skills
 from xyz_scorer import analyze_bullet, score_bullets_batch
-from matcher import match_resume_to_job
+from matcher import match_resume_to_job, cosine_similarity
 from ats_simulator import simulate_ats_parse, PHONE_REGEX
 from ollama_client import check_ollama_status, polish_bullet_with_qwen, generate_rule_based_fallback
 from train_ner import generate_synthetic_dataset, evaluate_ner_performance
+from ner import extract_entities_with_ner, ner_available
 from pydantic import ValidationError
 from main import MatchRequest
 
@@ -163,6 +164,30 @@ def test_fallback_never_invents_metrics():
     assert all(len(value) > 10 for value in fallback.values())
 
 
+def test_embedding_similarity_and_lexical_fallback():
+    assert cosine_similarity([1.0, 0.0], [1.0, 0.0]) == 1.0
+    assert cosine_similarity([1.0, 0.0], [0.0, 1.0]) == 0.0
+    assert cosine_similarity([1.0], [1.0, 0.0]) == 0.0
+
+    resume = "TypeScript React Next.js PostgreSQL"
+    jd = "Frontend Engineer with React, TypeScript, and Next.js"
+    lexical = match_resume_to_job(resume, jd)
+    assert lexical["semantic_source"] == "lexical"
+
+    embedded = match_resume_to_job(resume, jd, embedding_similarity=0.9)
+    assert embedded["semantic_source"] == "ollama-embedding"
+    assert embedded["semantic_similarity"] == 0.9
+
+
+def test_optional_spacy_ner_falls_back_cleanly():
+    result = extract_entities_with_ner("TypeScript React Next.js")
+    if ner_available():
+        assert result is not None
+        assert "TypeScript" in result
+    else:
+        assert result is None
+
+
 def test_ner_dataset_and_evaluation():
     data = generate_synthetic_dataset(num_samples=20, seed=123)
     assert len(data) == 20, "Should generate 20 annotated samples"
@@ -185,6 +210,8 @@ if __name__ == "__main__":
     test_match_request_rejects_oversized_input()
     test_ollama_status_and_polishing()
     test_fallback_never_invents_metrics()
+    test_embedding_similarity_and_lexical_fallback()
+    test_optional_spacy_ner_falls_back_cleanly()
     test_ner_dataset_and_evaluation()
     print("\nALL PYTHON ML TESTS PASSED SUCCESSFULLY!")
 

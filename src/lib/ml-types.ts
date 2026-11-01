@@ -43,6 +43,7 @@ export interface JobMatchResult {
   resume_skills_detected: string[];
   total_jd_skills: number;
   category_breakdown: Record<string, CategoryStats>;
+  semantic_source?: 'ollama-embedding' | 'lexical';
 }
 
 export interface AtsSimulationResult {

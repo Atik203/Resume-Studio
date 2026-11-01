@@ -141,7 +141,7 @@ test('link display, underline, entry locations, and divider widths render', () =
 
   const rendered = renderLatex(resolveVariant(project, variant));
 
-  assert.match(rendered, /\\href\{\\detokenize\{https:\/\/github\.com\/example\}\}\{https:\/\/github\.com\/example\}/);
+  assert.match(rendered, /\\href\{\\detokenize\{https:\/\/github\.com\/example\}\}\{\\nolinkurl\{https:\/\/github\.com\/example\}\}/);
   assert.doesNotMatch(rendered, /\\underline\{https:\/\/github/);
   assert.doesNotMatch(rendered, /Dhaka/);
   assert.match(rendered, /0\.5\\linewidth/);
