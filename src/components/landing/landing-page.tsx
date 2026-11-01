@@ -354,7 +354,7 @@ export function LandingPage() {
       </section>
 
       {/* 3. VALUE PROPOSITION PILLARS */}
-      <section id="features" className="py-20 bg-card border-y border-border">
+      <section id="features" className="py-20 bg-card border-y border-border scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
@@ -384,7 +384,7 @@ export function LandingPage() {
       </section>
 
       {/* 4. TEMPLATE GALLERY SHOWCASE */}
-      <section id="templates" className="py-20 bg-background">
+      <section id="templates" className="py-20 bg-background scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-foreground/80 text-xs font-bold mb-3">
@@ -443,7 +443,7 @@ export function LandingPage() {
       </section>
 
       {/* 5. PRIVACY & LOCAL ARCHITECTURE */}
-      <section id="privacy" className="py-20 bg-neutral-900 text-white relative overflow-hidden">
+      <section id="privacy" className="py-20 bg-neutral-900 text-white relative overflow-hidden scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
