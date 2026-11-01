@@ -56,8 +56,7 @@ function getSectionChipIcon(id: string) {
 }
 
 import { Sidebar } from '@/components/studio/sidebar';
-import { ProfileCard } from '@/components/studio/profile-card';
-import { SectionCard } from '@/components/studio/section-card';
+import { ProfileCard } from '@/components/studio/profile-card';import { SectionCard } from '@/components/studio/section-card';
 import { EntryCard } from '@/components/studio/entry-card';
 import { DesignTab } from '@/components/studio/design-tab';
 import { AtsPanel } from '@/components/studio/ats-panel';
@@ -67,7 +66,14 @@ import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
 import { SnapshotModal } from '@/components/studio/snapshot-modal';
 import { PreviewPane } from '@/components/studio/preview-pane';
-import { useDismiss } from '@/hooks/use-dismiss';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { resolveVariant, type ResumeSnapshot } from '@/lib/data';
 
 const PREMADE_SECTIONS = [
@@ -101,17 +107,8 @@ export default function Studio() {
   const [showSnapshotModal, setShowSnapshotModal] = useState(false);
   const [exportingZip, setExportingZip] = useState(false);
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false);
-  const [showDraftDropdown, setShowDraftDropdown] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const dragX = useRef<number | null>(null);
-  const draftMenuRef = useRef<HTMLDivElement | null>(null);
-  const exportMenuRef = useRef<HTMLDivElement | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
-
-  useDismiss(draftMenuRef, () => setShowDraftDropdown(false), showDraftDropdown);
-  useDismiss(exportMenuRef, () => setShowExportMenu(false), showExportMenu);
-  useDismiss(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
@@ -890,71 +887,41 @@ export default function Studio() {
 
         {/* Right: Draft Switcher + Primary Download + More Menu */}
         <div className="studio-topbar-right">
-          {/* Draft Selector Dropdown */}
-          <div className="relative" ref={draftMenuRef}>
-            <button
-              type="button"
-              className="draft-selector-btn"
-              onClick={() => setShowDraftDropdown(v => !v)}
-              title="Switch or manage drafts"
-            >
-              <span className="truncate max-w-[130px] sm:max-w-[180px]">{active.name}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {showDraftDropdown && (
-              <div
-                className="absolute right-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setShowDraftDropdown(false)}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="draft-selector-btn" title="Switch or manage drafts">
+                <span className="truncate max-w-[130px] sm:max-w-[180px]">{active.name}</span>
+                <ChevronDown size={13} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel>Resume & CV Drafts</DropdownMenuLabel>
+              {project.variants.map(v => (
+                <DropdownMenuItem
+                  key={v.id}
+                  onSelect={() => updateProject(p => ({ ...p, activeVariantId: v.id }))}
+                  className={v.id === active.id ? 'font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30' : ''}
+                >
+                  <span className="truncate flex-1">{v.name}</span>
+                  {v.id === active.id && <Check size={14} className="text-emerald-600 dark:text-emerald-400" />}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => setShowNewDraftModal(true)}
+                className="text-emerald-700 dark:text-emerald-400 font-semibold"
               >
-                <div className="px-3 py-1.5 font-bold text-[11px] text-neutral-400 uppercase tracking-wider">
-                  Resume & CV Drafts
-                </div>
-                {project.variants.map(v => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => {
-                      updateProject(p => ({ ...p, activeVariantId: v.id }));
-                      setShowDraftDropdown(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
-                      v.id === active.id ? 'font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30' : ''
-                    }`}
-                  >
-                    <span className="truncate">{v.name}</span>
-                    {v.id === active.id && <Check size={14} className="text-emerald-600 dark:text-emerald-400" />}
-                  </button>
-                ))}
-                <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNewDraftModal(true);
-                      setShowDraftDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-emerald-700 dark:text-emerald-400 font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-1.5"
-                  >
-                    <Plus size={13} />
-                    <span>Create New Draft…</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      duplicateDraft(active.id);
-                      setShowDraftDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                  >
-                    Duplicate Current Draft
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+                <Plus size={13} />
+                <span>Create New Draft…</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => duplicateDraft(active.id)}>
+                <span>Duplicate Current Draft</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Primary Download Split Button */}
-          <div className="relative inline-flex items-center" ref={exportMenuRef}>
+          <div className="relative inline-flex items-center">
             <Button
               className="download-primary-btn"
               disabled={busy}
@@ -964,158 +931,89 @@ export default function Studio() {
               {busy ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
               <span>{busy ? 'Compiling…' : 'Download'}</span>
             </Button>
-            <button
-              type="button"
-              className="download-split-arrow"
-              onClick={() => setShowExportMenu(v => !v)}
-              title="Export options"
-            >
-              <ChevronDown size={13} />
-            </button>
-
-            {showExportMenu && (
-              <div
-                className="absolute right-0 top-full mt-1.5 w-56 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setShowExportMenu(false)}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportPdf();
-                    setShowExportMenu(false);
-                  }}
-                  disabled={!pdfFile}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 font-semibold text-neutral-900 dark:text-neutral-100"
-                >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="download-split-arrow" title="Export options">
+                  <ChevronDown size={13} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem disabled={!pdfFile} onSelect={exportPdf} className="font-semibold">
                   <Download size={13} className="text-emerald-600" />
                   <span>Download Verified PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportLatexZip();
-                    setShowExportMenu(false);
-                  }}
-                  disabled={exportingZip}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={exportingZip} onSelect={exportLatexZip}>
                   <FileArchive size={13} className="text-amber-500" />
                   <span>Export Standalone LaTeX (.zip)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    compile();
-                    setShowExportMenu(false);
-                  }}
-                  disabled={busy}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 border-t border-neutral-100 dark:border-neutral-800"
-                >
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={busy} onSelect={compile}>
                   <RefreshCw size={13} className="text-sky-500" />
                   <span>Force Recompile (Ctrl+B)</span>
-                </button>
-              </div>
-            )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* More Menu (⋮) */}
-          <div className="relative" ref={moreMenuRef}>
-            <button
-              type="button"
-              className="studio-icon-btn"
-              onClick={() => setShowMoreMenu(v => !v)}
-              title="Developer tools & backups"
-            >
-              <MoreVertical size={16} />
-            </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="studio-icon-btn" title="Developer tools & backups">
+                <MoreVertical size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Developer & History</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setShowLatexInspectorModal(true)}>
+                <Code2 size={13} className="text-emerald-500" />
+                <span>Inspect LaTeX Source</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowSnapshotModal(true)}>
+                <History size={13} className="text-sky-500" />
+                <span>Snapshot Time Machine</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowPageFitModal(true)}>
+                <Sparkles size={13} className="text-purple-500" />
+                <span>Page-Fit Assistant</span>
+              </DropdownMenuItem>
 
-            {showMoreMenu && (
-              <div
-                className="absolute right-0 mt-1.5 w-56 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 z-50 text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setShowMoreMenu(false)}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Project Backup</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={exportBackup}>
+                <span>Export JSON Backup</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => importInputRef.current?.click()}>
+                <span>Import JSON Backup</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() =>
+                  setPreferences(p => ({
+                    ...p,
+                    theme: p.theme === 'dark' ? 'light' : 'dark',
+                  }))
+                }
               >
-                <div className="px-3 py-1 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">
-                  Developer & History
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLatexInspectorModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <Code2 size={13} className="text-emerald-500" />
-                  <span>Inspect LaTeX Source</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSnapshotModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <History size={13} className="text-sky-500" />
-                  <span>Snapshot Time Machine</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPageFitModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2"
-                >
-                  <Sparkles size={13} className="text-purple-500" />
-                  <span>Page-Fit Assistant</span>
-                </button>
-
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                <div className="px-3 py-1 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">
-                  Project Backup
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportBackup();
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                >
-                  Export JSON Backup
-                </button>
-                <label className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer block">
-                  <span>Import JSON Backup</span>
-                  <input type="file" accept="application/json" onChange={importBackup} className="hidden" />
-                </label>
-
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreferences(p => ({
-                      ...p,
-                      theme: p.theme === 'dark' ? 'light' : 'dark',
-                    }));
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-between"
-                >
-                  <span>Toggle Dark Theme</span>
-                  {preferences.theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
-                </button>
-
-                <Link
-                  href="/"
-                  className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-500 border-t border-neutral-100 dark:border-neutral-800"
-                >
+                <span className="flex-1">Toggle Dark Theme</span>
+                {preferences.theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/" className="flex w-full items-center gap-2 text-muted-foreground">
                   <Home size={13} />
                   <span>Public Landing Page</span>
                 </Link>
-              </div>
-            )}
-          </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json"
+            onChange={importBackup}
+            className="hidden"
+          />
         </div>
       </header>
 
