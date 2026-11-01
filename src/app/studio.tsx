@@ -13,7 +13,7 @@ import {
 } from '@/lib/data';
 import { fixtureProject } from '@/lib/fixture';
 import { loadProject, saveProject } from '@/lib/storage';
-import { decodePdfBase64, parseCompileResponseMetadata } from '@/lib/compile-response';
+import { useCompilePreview } from '@/hooks/use-compile-preview';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { defaultUiPreferences, loadUiPreferences, saveUiPreferences, type UiPreferences } from '@/lib/ui-preferences';
@@ -90,17 +90,8 @@ export default function Studio() {
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'idle' | 'error'>('idle');
   const [saveStateText, setSaveStateText] = useState('Loading library…');
-  const [pdfUrl, setPdfUrl] = useState('');
-  const [pdfFile, setPdfFile] = useState<Blob | null>(null);
-  const [pageCount, setPageCount] = useState<string>('');
-  const [overflow, setOverflow] = useState(false);
-  const [compiledRevision, setCompiledRevision] = useState(-1);
   const [revision, setRevision] = useState(0);
   const projectRevision = useRef(0);
-  const compileController = useRef<AbortController | null>(null);
-  const compileRequestId = useRef(0);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
   const [activePane, setActivePane] = useState<'editor' | 'design' | 'ats'>('editor');
   const [designMode, setDesignMode] = useState<'quick' | 'advanced'>('quick');
   const [preferences, setPreferences] = useState<UiPreferences>(defaultUiPreferences);
@@ -137,6 +128,27 @@ export default function Studio() {
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
 
+  const {
+    pdfUrl,
+    pdfFile,
+    pageCount,
+    overflow,
+    compiledRevision,
+    busy,
+    message,
+    setMessage,
+    setPageCount,
+    compile,
+    invalidate: invalidatePreview,
+  } = useCompilePreview({
+    project,
+    variantId: active.id,
+    revision,
+    ready,
+    autoPreview: preferences.autoPreview,
+    previewDelayMs: preferences.previewDelayMs,
+  });
+
   useEffect(() => {
     Promise.resolve()
       .then(() => {
@@ -154,7 +166,7 @@ export default function Studio() {
         setSaveStateText('Storage error');
       })
       .finally(() => setReady(true));
-  }, []);
+  }, [setMessage]);
 
   useEffect(() => {
     if (!ready) return;
@@ -203,16 +215,13 @@ export default function Studio() {
   }, [active.id, activePane]);
 
   const updateProject = useCallback((updater: (current: ProjectData) => ProjectData) => {
-    compileController.current?.abort();
+    invalidatePreview();
     projectRevision.current += 1;
     setRevision(projectRevision.current);
-    setPdfFile(null);
-    setPageCount('');
-    setOverflow(false);
     setSaveState('saving');
     setSaveStateText('Saving…');
     setProject(current => updater(structuredClone(current)));
-  }, []);
+  }, [invalidatePreview]);
 
   const updateVariant = useCallback(
     (updater: (variant: ResumeVariant) => ResumeVariant) =>
@@ -775,54 +784,6 @@ export default function Studio() {
     setMessage(`Deleted draft "${target.name}".`);
   }
 
-  const compile = useCallback(async () => {
-    const rev = projectRevision.current;
-    compileController.current?.abort();
-    const controller = new AbortController();
-    compileController.current = controller;
-    const requestId = ++compileRequestId.current;
-    setBusy(true);
-    setMessage('Compiling with local pdflatex…');
-    try {
-      const response = await fetch('/api/compile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project, variantId: active.id }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error ?? 'Compilation failed.');
-      }
-      const metadata = parseCompileResponseMetadata(response);
-      const result = (await response.json()) as { pdfBase64?: unknown };
-      const pdfBytes = decodePdfBase64(result.pdfBase64);
-      const pdfBuffer = new ArrayBuffer(pdfBytes.byteLength);
-      new Uint8Array(pdfBuffer).set(pdfBytes);
-      const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
-      if (rev !== projectRevision.current) {
-        setMessage('The document changed during compilation. Build a fresh preview.');
-        return;
-      }
-      const nextUrl = URL.createObjectURL(blob);
-      setPdfUrl(old => {
-        if (old) URL.revokeObjectURL(old);
-        return nextUrl;
-      });
-      setPdfFile(blob);
-      setCompiledRevision(rev);
-      setPageCount(String(metadata.pageCount));
-      setOverflow(metadata.overflow);
-      setMessage('PDF compiled and verified locally.');
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        setMessage(error instanceof Error ? error.message : 'Compilation failed.');
-      }
-    } finally {
-      if (compileRequestId.current === requestId) setBusy(false);
-    }
-  }, [active.id, project]);
-
   const exportPdf = useCallback(() => {
     if (!pdfFile || !pdfUrl) return;
     const anchor = document.createElement('a');
@@ -901,16 +862,6 @@ export default function Studio() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [compile, exportPdf, pdfFile]);
-
-  // Auto-compile preview on initial mount & debounced changes
-  useEffect(() => {
-    if (!ready) return;
-    if (!preferences.autoPreview) return;
-    const timer = setTimeout(() => {
-      compile();
-    }, preferences.previewDelayMs || 800);
-    return () => clearTimeout(timer);
-  }, [ready, revision, active.id, preferences.autoPreview, preferences.previewDelayMs, compile]);
 
   function exportBackup() {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
