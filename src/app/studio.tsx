@@ -66,6 +66,8 @@ import { PhotoCropperModal } from '@/components/studio/photo-cropper-modal';
 import { LatexInspectorModal } from '@/components/studio/latex-inspector-modal';
 import { SnapshotModal } from '@/components/studio/snapshot-modal';
 import { PreviewPane } from '@/components/studio/preview-pane';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -113,6 +115,8 @@ export default function Studio() {
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
   const { saveState, saveStateText, markSaving, markLoaded, reportLoadError } = useAutosave(project, ready);
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const {
     pdfUrl,
@@ -122,7 +126,6 @@ export default function Studio() {
     compiledRevision,
     busy,
     message,
-    setMessage,
     setPageCount,
     compile,
     invalidate: invalidatePreview,
@@ -146,11 +149,11 @@ export default function Studio() {
         markLoaded();
       })
       .catch(err => {
-        setMessage(`Local storage error: ${err instanceof Error ? err.message : 'unknown error'}`);
+        toast({ title: 'Local storage error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'error' });
         reportLoadError();
       })
       .finally(() => setReady(true));
-  }, [setMessage, markLoaded, reportLoadError]);
+  }, [toast, markLoaded, reportLoadError]);
 
   useEffect(() => {
     if (!ready) return;
@@ -342,7 +345,18 @@ export default function Studio() {
     }));
   }
 
-  function removeEntry(entryId: string) {
+  async function removeEntry(entryId: string) {
+    const entry = selectedEntries.get(entryId);
+    const approved = await confirm({
+      title: 'Remove this entry?',
+      description: entry?.title
+        ? `"${entry.title}" will be removed from this draft. The master library entry is preserved.`
+        : 'This entry will be removed from this draft. The master library entry is preserved.',
+      confirmLabel: 'Remove entry',
+      destructive: true,
+    });
+    if (!approved) return;
+
     updateVariant(v => ({
       ...v,
       selectedEntryIds: v.selectedEntryIds.filter(id => id !== entryId),
@@ -384,20 +398,24 @@ export default function Studio() {
     }));
 
     setShowAddSectionMenu(false);
-    setMessage(`Added ${premade.label} section.`);
+    toast({ title: 'Section added', description: premade.label, variant: 'success' });
     setTimeout(() => {
       document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
   }
 
-  function deleteSection(sectionId: string, sectionLabel: string) {
+  async function deleteSection(sectionId: string, sectionLabel: string) {
     if (active.sections.length <= 1) {
-      alert('You must keep at least one section in the resume.');
+      toast({ title: 'Cannot delete section', description: 'Keep at least one section in the draft.', variant: 'error' });
       return;
     }
-    if (!window.confirm(`Delete section "${sectionLabel}" from this draft?`)) {
-      return;
-    }
+    const approved = await confirm({
+      title: 'Delete this section?',
+      description: `"${sectionLabel}" and its placements will be removed from this draft. Master library entries are preserved.`,
+      confirmLabel: 'Delete section',
+      destructive: true,
+    });
+    if (!approved) return;
 
     const section = active.sections.find(s => s.id === sectionId);
     const entryIdsToRemove = new Set(section?.entryIds ?? []);
@@ -407,7 +425,7 @@ export default function Studio() {
       sections: v.sections.filter(s => s.id !== sectionId),
       selectedEntryIds: v.selectedEntryIds.filter(id => !entryIdsToRemove.has(id)),
     }));
-    setMessage(`Removed section "${sectionLabel}".`);
+    toast({ title: 'Section removed', description: sectionLabel, variant: 'success' });
   }
 
   function addSkillToResume(skillName: string) {
@@ -476,7 +494,7 @@ export default function Studio() {
         variants: newVariants,
       };
     });
-    setMessage(`Added "${skillName}" to technical skills.`);
+    toast({ title: 'Skill added', description: skillName, variant: 'success' });
   }
 
   function updateEntryBullet(entryId: string, bulletIndex: number, newText: string) {
@@ -489,7 +507,7 @@ export default function Studio() {
       });
       return { ...p, library: { ...p.library, entries: newEntries } };
     });
-    setMessage('Applied orphan trim to bullet point.');
+    toast({ title: 'Orphan trim applied', variant: 'success' });
   }
 
   function sectionIsCollapsed(sectionId: string) {
@@ -665,7 +683,7 @@ export default function Studio() {
     }));
 
     setShowNewDraftModal(false);
-    setMessage(`Created new ${isCv ? 'Academic CV' : 'Software Resume'} draft: "${name}".`);
+    toast({ title: 'Draft created', description: name, variant: 'success' });
   }
 
   function duplicateDraft(variantId: string) {
@@ -690,17 +708,23 @@ export default function Studio() {
       variants: nextVariants,
       activeVariantId: copy.id,
     }));
-    setMessage(`Created duplicate draft: "${copy.name}".`);
+    toast({ title: 'Draft duplicated', description: copy.name, variant: 'success' });
   }
 
-  function deleteDraft(variantId: string) {
+  async function deleteDraft(variantId: string) {
     if (project.variants.length <= 1) {
-      alert('You must keep at least one resume or CV draft.');
+      toast({ title: 'Cannot delete draft', description: 'Keep at least one resume or CV draft.', variant: 'error' });
       return;
     }
     const target = project.variants.find(v => v.id === variantId);
     if (!target) return;
-    if (!window.confirm(`Delete draft "${target.name}"? This cannot be undone.`)) return;
+    const approved = await confirm({
+      title: 'Delete this draft?',
+      description: `"${target.name}" will be permanently deleted. This cannot be undone.`,
+      confirmLabel: 'Delete draft',
+      destructive: true,
+    });
+    if (!approved) return;
 
     const nextVariants = project.variants.filter(v => v.id !== variantId);
     const nextActiveId = project.activeVariantId === variantId ? nextVariants[0].id : project.activeVariantId;
@@ -710,7 +734,7 @@ export default function Studio() {
       variants: nextVariants,
       activeVariantId: nextActiveId,
     }));
-    setMessage(`Deleted draft "${target.name}".`);
+    toast({ title: 'Draft deleted', description: target.name, variant: 'success' });
   }
 
   const exportPdf = useCallback(() => {
@@ -751,11 +775,15 @@ export default function Studio() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to export LaTeX package');
+      toast({
+        title: 'LaTeX export failed',
+        description: err instanceof Error ? err.message : 'Failed to export LaTeX package',
+        variant: 'error',
+      });
     } finally {
       setExportingZip(false);
     }
-  }, [active.id, resolvedActive.profile.name, project]);
+  }, [active.id, resolvedActive.profile.name, project, toast]);
 
   const handleRestoreProject = useCallback((restoredProject: ProjectData) => {
     setProject(restoredProject);
@@ -800,25 +828,37 @@ export default function Studio() {
     anchor.download = `resume-studio-backup-v${project.version}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setMessage('Exported JSON backup successfully.');
+    toast({ title: 'Backup exported', variant: 'success' });
   }
 
-  function importBackup(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function importBackup(e: ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const parsed = JSON.parse(ev.target?.result as string);
-        const validated = validateProject(parsed);
-        setProject(validated);
-        setMessage('Project restored from backup.');
-      } catch (err) {
-        setMessage(`Import failed: ${err instanceof Error ? err.message : 'invalid backup format'}`);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const validated = validateProject(parsed);
+      const approved = await confirm({
+        title: 'Replace the current project?',
+        description:
+          'This import replaces the project in this browser profile. Export a backup first if you want to keep the current version.',
+        confirmLabel: 'Replace project',
+        destructive: true,
+      });
+      if (!approved) return;
+      setProject(validated);
+      toast({ title: 'Project restored', variant: 'success' });
+    } catch (err) {
+      toast({
+        title: 'Import failed',
+        description: err instanceof Error ? err.message : 'Invalid backup format',
+        variant: 'error',
+      });
+    } finally {
+      input.value = '';
+    }
   }
 
   return (
@@ -1432,7 +1472,7 @@ export default function Studio() {
         onSave={dataUrl => {
           editProfilePhoto(dataUrl);
           setShowPhotoModal(false);
-          setMessage('Profile photo updated.');
+          toast({ title: 'Profile photo updated', variant: 'success' });
         }}
       />
 
@@ -1445,7 +1485,7 @@ export default function Studio() {
         isOverflowing={overflow}
         onApplyDesign={updatedDesign => {
           updateVariant(v => ({ ...v, design: updatedDesign }));
-          setMessage('Applied page-fit spacing optimizations.');
+          toast({ title: 'Page-fit spacing applied', variant: 'success' });
         }}
         onUpdateEntryBullet={updateEntryBullet}
       />
