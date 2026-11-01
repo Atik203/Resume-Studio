@@ -12,7 +12,8 @@ import {
   validateProject,
 } from '@/lib/data';
 import { fixtureProject } from '@/lib/fixture';
-import { loadProject, saveProject } from '@/lib/storage';
+import { loadProject } from '@/lib/storage';
+import { useAutosave } from '@/hooks/use-autosave';
 import { useCompilePreview } from '@/hooks/use-compile-preview';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -88,8 +89,6 @@ const CompiledPdfViewer = dynamic(() => import('@/components/pdf/compiled-pdf-vi
 export default function Studio() {
   const [project, setProject] = useState<ProjectData>(() => structuredClone(fixtureProject));
   const [ready, setReady] = useState(false);
-  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'idle' | 'error'>('idle');
-  const [saveStateText, setSaveStateText] = useState('Loading library…');
   const [revision, setRevision] = useState(0);
   const projectRevision = useRef(0);
   const [activePane, setActivePane] = useState<'editor' | 'design' | 'ats'>('editor');
@@ -127,6 +126,7 @@ export default function Studio() {
 
   const active = project.variants.find(v => v.id === project.activeVariantId) ?? project.variants[0];
   const resolvedActive = useMemo(() => resolveVariant(project, active), [project, active]);
+  const { saveState, saveStateText, markSaving, markLoaded, reportLoadError } = useAutosave(project, ready);
 
   const {
     pdfUrl,
@@ -157,16 +157,14 @@ export default function Studio() {
       })
       .then(saved => {
         if (saved) setProject(validateProject(saved));
-        setSaveState('saved');
-        setSaveStateText('Saved locally');
+        markLoaded();
       })
       .catch(err => {
         setMessage(`Local storage error: ${err instanceof Error ? err.message : 'unknown error'}`);
-        setSaveState('error');
-        setSaveStateText('Storage error');
+        reportLoadError();
       })
       .finally(() => setReady(true));
-  }, [setMessage]);
+  }, [setMessage, markLoaded, reportLoadError]);
 
   useEffect(() => {
     if (!ready) return;
@@ -188,24 +186,6 @@ export default function Studio() {
   }, [preferences, ready]);
 
   useEffect(() => {
-    if (!ready) return;
-    const timer = window.setTimeout(() => {
-      setSaveState('saving');
-      setSaveStateText('Saving…');
-      saveProject(project)
-        .then(() => {
-          setSaveState('saved');
-          setSaveStateText('Saved locally');
-        })
-        .catch(err => {
-          setSaveState('error');
-          setSaveStateText(`Save failed: ${err instanceof Error ? err.message : 'error'}`);
-        });
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [project, ready]);
-
-  useEffect(() => {
     // Ensure editor content always resets gracefully to top on variant or pane switch
     const timer = setTimeout(() => {
       const container = document.querySelector('.editor-content');
@@ -218,10 +198,9 @@ export default function Studio() {
     invalidatePreview();
     projectRevision.current += 1;
     setRevision(projectRevision.current);
-    setSaveState('saving');
-    setSaveStateText('Saving…');
+    markSaving();
     setProject(current => updater(structuredClone(current)));
-  }, [invalidatePreview]);
+  }, [invalidatePreview, markSaving]);
 
   const updateVariant = useCallback(
     (updater: (variant: ResumeVariant) => ResumeVariant) =>
