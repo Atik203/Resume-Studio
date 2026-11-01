@@ -5,6 +5,7 @@ Validates taxonomy skill extraction, Google XYZ bullet scoring, and semantic mat
 
 import sys
 import os
+import re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "ml"))
 
 from taxonomy import extract_skills
@@ -120,6 +121,18 @@ def test_ollama_status_and_polishing():
     print("[OK] Ollama client and bullet polishing passed.")
 
 
+def test_fallback_never_invents_metrics():
+    fallback = generate_rule_based_fallback(
+        "Worked on fixing bugs and helped the team with tests."
+    )
+    joined = " ".join(fallback.values())
+    assert not re.search(r"\d+\s*%", joined), "Fallback must not invent percentages"
+    assert "35%" not in joined
+    assert "automated test suites" not in joined.lower()
+    assert "[add a verified metric" in fallback["quantified"].lower()
+    assert all(len(value) > 10 for value in fallback.values())
+
+
 def test_ner_dataset_and_evaluation():
     data = generate_synthetic_dataset(num_samples=20, seed=123)
     assert len(data) == 20, "Should generate 20 annotated samples"
@@ -138,6 +151,7 @@ if __name__ == "__main__":
     test_job_matching()
     test_ats_simulator()
     test_ollama_status_and_polishing()
+    test_fallback_never_invents_metrics()
     test_ner_dataset_and_evaluation()
     print("\nALL PYTHON ML TESTS PASSED SUCCESSFULLY!")
 

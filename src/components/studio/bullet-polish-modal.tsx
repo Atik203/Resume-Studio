@@ -156,11 +156,21 @@ export function BulletPolishModal({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white tracking-wide">
-                  Local Qwen 3.5 4B Bullet Polish
+                  Bullet Polish
                 </h2>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-800/60">
-                  <Cpu size={10} /> 100% Offline · GPU
-                </span>
+                {data?.source?.startsWith('ollama:') ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-800/60">
+                    <Cpu size={10} /> Local model · GPU
+                  </span>
+                ) : data?.source === 'rule_based_fallback' ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950/70 text-amber-300 border border-amber-800/60">
+                    <AlertCircle size={10} /> Rule-based · offline
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-800/70 text-neutral-300 border border-neutral-700/60">
+                    <RefreshCw size={10} className="animate-spin" /> Generating…
+                  </span>
+                )}
               </div>
               <p className="text-xs text-[#8ba393]">
                 {entryTitle ? (
@@ -220,10 +230,10 @@ export function BulletPolishModal({
               <RefreshCw size={28} className="text-emerald-400 animate-spin" />
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-white">
-                  Running Local Qwen 3.5 4B SLM...
+                  Generating bullet variations…
                 </p>
                 <p className="text-xs text-[#8ba393]">
-                  Synthesizing Quantified, Action-First, and Compact variations on GPU
+                  Using the local model when available; otherwise a rule-based rewrite
                 </p>
               </div>
             </div>
@@ -250,9 +260,18 @@ export function BulletPolishModal({
           {/* Variations Cards */}
           {!loading && data && (
             <div className="space-y-4">
+              {data.source === 'rule_based_fallback' && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2">
+                  <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-300">
+                    Rule-based rewrite: the local model is offline. Replace the bracketed metric
+                    placeholder with a real result before applying.
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#8ba393] uppercase tracking-wider">
-                  Generated High-Impact Variations ({data.variations.length})
+                  Generated Variations ({data.variations.length})
                 </span>
                 <button
                   type="button"
