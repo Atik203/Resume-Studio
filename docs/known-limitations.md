@@ -31,5 +31,4 @@ These are intentional scope limits for the local-first V1, not hidden behavior.
 
 - Project data lives in the current browser profile's IndexedDB. Clearing site data removes it; export a JSON backup for portability.
 - Backups validate on import. Unknown future keys are preserved because validation is predicate-only, but older app versions may not understand new fields.
-- The private reference PDFs live in `reference/` and are gitignored. They are not part of the application or its fixtures.
-- The reference PDFs are still present in the public Git history. Removing them from history requires an explicit force-push decision described in `docs/privacy-cleanup.md`.
+- The reference PDFs live in `reference/` and are gitignored. They are the owner's resume and may remain public; the current tree does not include them as fixtures.

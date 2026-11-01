@@ -38,8 +38,7 @@ All notable changes to Resume Studio are documented here. The format follows [Ke
 
 ### Security
 
-- Reference PDFs and Python bytecode removed from tracking; reference PDFs moved to gitignored `reference/`.
-- Git history rewritten to remove the PDF paths. GitHub may still cache old objects; see `docs/privacy-cleanup.md`.
+- Reference PDFs and Python bytecode removed from the current tracking; local reference PDFs stay in the gitignored `reference/` directory. The owner has confirmed the resume PDFs may remain public, so no history purge is required.
 - Added a security policy and private reporting path.
 
 ## [0.1.0] - 2026-10-25

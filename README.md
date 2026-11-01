@@ -36,7 +36,7 @@ Resume Studio does not switch PDF engines. It reports a clear error if the confi
 - Profile links have Website, LinkedIn, GitHub, Portfolio, and Other types with matching editor icons. Version 1 JSON backups are migrated to the current typed-link schema without changing their content.
 - The interface font and PDF viewer worker are bundled locally; neither requires a remote font or PDF service. PDF font choices use the locally verified TeX Live Latin Modern and TeX Gyre families.
 - The first run loads synthetic sample content. Replace it with your own details. Personal data stays out of source fixtures.
-- The two private design-reference PDFs live in the gitignored `reference/` directory. They are inputs for visual comparison, not app data, and are never committed.
+- The two design-reference PDFs live in the gitignored `reference/` directory. They are inputs for visual comparison, not app data, and are not part of the synthetic fixtures. The repository owner has confirmed they may be public.
 
 ## Local ML assistant (optional)
 
