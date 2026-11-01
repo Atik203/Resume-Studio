@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useModalBehavior } from '@/hooks/use-modal-behavior';
+import { DialogShell } from '@/components/ui/dialog';
 import { Upload } from 'lucide-react';
 
 export interface PhotoCropperModalProps {
@@ -13,8 +13,19 @@ export interface PhotoCropperModalProps {
 }
 
 export function PhotoCropperModal(props: PhotoCropperModalProps) {
-  if (!props.isOpen) return null;
-  return <PhotoCropperContent key={props.initialImage ?? 'empty'} {...props} />;
+  return (
+    <DialogShell
+      open={props.isOpen}
+      onOpenChange={open => {
+        if (!open) props.onClose();
+      }}
+      title="Crop and Position Profile Photo"
+      description="Choose a portrait, then adjust its zoom and position before saving."
+      contentClassName="photo-cropper-modal"
+    >
+      <PhotoCropperContent key={props.initialImage ?? 'empty'} {...props} />
+    </DialogShell>
+  );
 }
 
 function PhotoCropperContent({
@@ -29,8 +40,6 @@ function PhotoCropperContent({
   const panStartRef = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  useModalBehavior(modalRef, onClose, true);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -168,15 +177,7 @@ function PhotoCropperContent({
   }
 
   return (
-    <div
-      ref={modalRef}
-      className="photo-cropper-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="photo-modal-title"
-    >
-      <div className="photo-cropper-modal" onClick={e => e.stopPropagation()}>
+    <>
         <div className="flex items-center justify-between">
           <strong id="photo-modal-title" className="text-base font-semibold">
             Crop & Position Profile Photo
@@ -230,7 +231,6 @@ function PhotoCropperContent({
             Apply & Save to Resume
           </Button>
         </div>
-      </div>
-    </div>
+    </>
   );
 }
