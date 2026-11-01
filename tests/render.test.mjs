@@ -146,6 +146,34 @@ test('markdown formatting in bullets and header layout variants compile to PDF',
   }
 });
 
+test('long URLs render with xurl in URL and combined display modes', async () => {
+  const project = structuredClone(fixtureProject);
+  const longUrl = `https://example.test/${'very-long-segment-'.repeat(8)}?alpha=first&beta=second`;
+  project.library.profile.links = [{ type: 'github', label: 'GitHub', url: longUrl }];
+
+  for (const linkDisplay of ['url', 'both']) {
+    const variant = {
+      ...project.variants[0],
+      design: { ...project.variants[0].design, linkDisplay },
+    };
+    const latex = renderLatex(resolveVariant(project, variant));
+    assert.match(latex, /\\usepackage\{xurl\}/);
+    assert.match(latex, /\\nolinkurl\{/);
+
+    const dir = await mkdtemp(path.join(tmpdir(), 'resume-studio-long-url-test-'));
+    try {
+      await writeFile(path.join(dir, 'resume.tex'), latex, 'utf8');
+      await run(process.env.PDFLATEX_PATH || 'pdflatex', ['-interaction=nonstopmode', '-halt-on-error', '-file-line-error', '-no-shell-escape', 'resume.tex'], dir);
+      const pdf = await readFile(path.join(dir, 'resume.pdf'));
+      assert.ok(pdf.length > 1000);
+      const text = await run('pdftotext', ['resume.pdf', '-'], dir);
+      assert.match(text, /https:\/\/example\.test\//);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+});
+
 test('link display, underline, and divider width options compile locally', async () => {
   const project = structuredClone(fixtureProject);
   project.library.profile.links = [{ type: 'github', label: 'GitHub', url: 'https://github.com/example' }];

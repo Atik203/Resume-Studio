@@ -86,8 +86,18 @@ function linkWithType(
     portfolio: '\\faBriefcase',
     other: '\\faLink',
   } as Record<string, string>)[item.type] ?? '\\faLink';
-  const text = display === 'url' ? item.url : display === 'both' ? `${item.label} (${item.url})` : item.label;
-  return `${showMarker ? `{\\scriptsize\\color{accent}${marker}}\\,` : ''}${link(text, item.url, underline)}`;
+  const prefix = showMarker ? `{\\scriptsize\\color{accent}${marker}}\\,` : '';
+  const url = safeUrl(item.url);
+
+  if (!url) return `${prefix}${escapeLatex(item.label)}`;
+  if (display === 'label') return `${prefix}${link(item.label, item.url, underline)}`;
+
+  const urlText = `\\nolinkurl{${item.url}}`;
+  if (display === 'url') {
+    return `${prefix}\\href{\\detokenize{${url}}}{${urlText}}`;
+  }
+  const labelText = underline ? `\\underline{${escapeLatex(item.label)}}` : escapeLatex(item.label);
+  return `${prefix}\\href{\\detokenize{${url}}}{${labelText} (${urlText})}`;
 }
 
 function inlineLinks(
@@ -194,6 +204,7 @@ export function renderLatex(resume: ResolvedVariant): string {
 \usepackage{fontawesome5}
 \usepackage{xcolor}
 \usepackage{hyperref}
+\usepackage{xurl}
 \definecolor{accent}{HTML}{${color}}
 \definecolor{bodytext}{HTML}{${textColor}}
 \hypersetup{colorlinks=true,urlcolor=accent,linkcolor=accent${pdfMetadata}}
