@@ -102,6 +102,11 @@ def test_ats_simulator():
     assert ats["ats_readability_score"] >= 80, f"Expected >= 80 ATS score, got {ats['ats_readability_score']}"
     assert ats["parsed_profile"]["name"] == "Jane Developer"
     assert ats["parsed_profile"]["email"] == "jane@example.com"
+    assert ats["contact_fields_found"]["name"] == "Jane Developer"
+    assert ats["contact_fields_found"]["links_count"] == 1
+    assert ats["chronological_order_valid"] is True
+    assert isinstance(ats["parsed_sections"], list)
+    assert "Jane Developer" in ats["extracted_clean_text"]
     print("[OK] ATS parser simulator passed.")
 
 

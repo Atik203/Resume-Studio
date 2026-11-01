@@ -138,6 +138,48 @@ def simulate_ats_parse(project_data: Dict[str, Any], variant_id: Optional[str] =
     # Overall Readability Score (0 to 100)
     score = round((checks_passed / total_checks) * 100)
 
+    # Flat contact fields consumed by the ATS panel.
+    contact_fields_found = {
+        "name": name or None,
+        "email": email or None,
+        "phone": phone or None,
+        "location": location or None,
+        "links_count": len(links),
+    }
+
+    # Section-level structure report.
+    sections = active_variant.get("sections", []) if active_variant else []
+    parsed_sections = []
+    for section in sections:
+        entry_ids = section.get("entryIds", [])
+        section_entries = [entry for entry in active_entries if entry.get("id") in entry_ids]
+        parsed_sections.append({
+            "sectionId": section.get("id", ""),
+            "heading": section.get("label", ""),
+            "entry_count": len(section_entries),
+            "bullets_count": sum(len(entry.get("bullets", [])) for entry in section_entries),
+        })
+
+    # Plain-text extraction used by the diagnostic preview.
+    clean_lines = [name, title, email, phone, location]
+    for entry in active_entries:
+        override = entry_overrides.get(entry.get("id"), {})
+        heading = " | ".join(part for part in [
+            override.get("title") or entry.get("title", ""),
+            override.get("subtitle") or entry.get("subtitle", ""),
+            override.get("date") or entry.get("date", ""),
+        ] if part)
+        if heading:
+            clean_lines.append(heading)
+        description = override.get("description") or entry.get("description", "")
+        if description:
+            clean_lines.append(description)
+        bullets = override.get("bullets") if "bullets" in override else entry.get("bullets", [])
+        clean_lines.extend(f"• {bullet}" for bullet in bullets)
+        technologies = override.get("technologies") if "technologies" in override else entry.get("technologies", [])
+        if technologies:
+            clean_lines.append("Technologies: " + ", ".join(technologies))
+
     return {
         "ats_readability_score": score,
         "parsed_profile": {
@@ -148,6 +190,10 @@ def simulate_ats_parse(project_data: Dict[str, Any], variant_id: Optional[str] =
             "location": location,
             "links_count": len(links),
         },
+        "contact_fields_found": contact_fields_found,
+        "chronological_order_valid": not any(warning.get("type") == "chronology" for warning in warnings),
+        "parsed_sections": parsed_sections,
+        "extracted_clean_text": "\n".join(line for line in clean_lines if line),
         "extracted_experience": clean_jobs,
         "warnings": warnings,
         "status": "passed" if score >= 80 else "needs_attention",

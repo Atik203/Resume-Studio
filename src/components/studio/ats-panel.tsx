@@ -512,61 +512,61 @@ export function AtsPanel({
                     <span className="audit-label">Full Name:</span>
                     <strong
                       className={
-                        atsSimulation.contact_fields_found.name
+                        atsSimulation.contact_fields_found?.name
                           ? 'text-emerald-500'
                           : 'text-rose-500'
                       }
                     >
-                      {atsSimulation.contact_fields_found.name || 'Missing'}
+                      {atsSimulation.contact_fields_found?.name || 'Missing'}
                     </strong>
                   </div>
                   <div className="audit-field">
                     <span className="audit-label">Email:</span>
                     <strong
                       className={
-                        atsSimulation.contact_fields_found.email
+                        atsSimulation.contact_fields_found?.email
                           ? 'text-emerald-500'
                           : 'text-rose-500'
                       }
                     >
-                      {atsSimulation.contact_fields_found.email || 'Missing'}
+                      {atsSimulation.contact_fields_found?.email || 'Missing'}
                     </strong>
                   </div>
                   <div className="audit-field">
                     <span className="audit-label">Phone:</span>
                     <strong
                       className={
-                        atsSimulation.contact_fields_found.phone
+                        atsSimulation.contact_fields_found?.phone
                           ? 'text-emerald-500'
                           : 'text-amber-500'
                       }
                     >
-                      {atsSimulation.contact_fields_found.phone || 'Missing / Incomplete'}
+                      {atsSimulation.contact_fields_found?.phone || 'Missing / Incomplete'}
                     </strong>
                   </div>
                   <div className="audit-field">
                     <span className="audit-label">Location:</span>
                     <strong
                       className={
-                        atsSimulation.contact_fields_found.location
+                        atsSimulation.contact_fields_found?.location
                           ? 'text-emerald-500'
                           : 'text-amber-500'
                       }
                     >
-                      {atsSimulation.contact_fields_found.location || 'Missing'}
+                      {atsSimulation.contact_fields_found?.location || 'Missing'}
                     </strong>
                   </div>
                 </div>
               </div>
 
               {/* Formatting & Parsing Warnings */}
-              {atsSimulation.warnings.length > 0 && (
+              {(atsSimulation.warnings?.length ?? 0) > 0 && (
                 <div className="warnings-card">
                   <span className="text-xs font-semibold text-amber-500 flex items-center gap-1.5 mb-2">
-                    <AlertTriangle size={14} /> Identified ATS Traps ({atsSimulation.warnings.length})
+                    <AlertTriangle size={14} /> Identified ATS Traps ({atsSimulation.warnings?.length ?? 0})
                   </span>
                   <ul className="warnings-list">
-                    {atsSimulation.warnings.map((warn, i) => (
+                    {atsSimulation.warnings?.map((warn, i) => (
                       <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
                         <span className="text-amber-500">•</span>
                         <span>{warn}</span>
@@ -584,7 +584,7 @@ export function AtsPanel({
                 <p className="text-[11px] text-muted-foreground mb-2">
                   This is the unformatted text stream the recruiter&apos;s system indexes. Confirm all sections and dates appear cleanly.
                 </p>
-                <pre className="clean-text-pre">{atsSimulation.extracted_clean_text}</pre>
+                <pre className="clean-text-pre">{atsSimulation.extracted_clean_text || 'No clean text returned.'}</pre>
               </div>
             </div>
           )}
