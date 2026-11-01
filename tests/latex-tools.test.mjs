@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import { resolveVariant } from '../src/lib/data.ts';
 import { fixtureProject } from '../src/lib/fixture.ts';
 import { renderLatex } from '../src/lib/latex.ts';
+import { POST as exportTex } from '../src/app/api/export-tex/route.ts';
 
 test('PDF/A archival metadata injection in renderLatex', () => {
   const project = structuredClone(fixtureProject);
@@ -26,11 +27,11 @@ test('PDF/A archival metadata injection in renderLatex', () => {
 
 test('POST /api/export-tex packages standalone LaTeX project into ZIP', async () => {
   const project = structuredClone(fixtureProject);
-  const res = await fetch('http://127.0.0.1:3000/api/export-tex', {
+  const res = await exportTex(new Request('http://127.0.0.1/api/export-tex', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ project, variantId: project.activeVariantId }),
-  });
+  }));
 
   assert.equal(res.status, 200, 'Status should be 200 OK');
   assert.equal(res.headers.get('content-type'), 'application/zip');
@@ -70,11 +71,11 @@ test('POST /api/export-tex extracts photo assets for t05-profile-cv', async () =
   // 1x1 transparent PNG data URL
   project.library.profile.photoDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-  const res = await fetch('http://127.0.0.1:3000/api/export-tex', {
+  const res = await exportTex(new Request('http://127.0.0.1/api/export-tex', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ project, variantId: variant.id }),
-  });
+  }));
 
   assert.equal(res.status, 200);
   const arrayBuffer = await res.arrayBuffer();

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server.js';
 import JSZip from 'jszip';
-import { validateProject, resolveVariant } from '@/lib/data';
-import { renderLatex } from '@/lib/latex';
+import { validateProject, resolveVariant } from '../../../lib/data.ts';
+import { renderLatex } from '../../../lib/latex.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
